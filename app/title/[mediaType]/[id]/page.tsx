@@ -36,9 +36,8 @@ interface WatchEntry {
   currentSeason: number | null
   currentEpisode: number | null
   seenTogether: boolean
-  notes: string | null // ✅ NUEVO
-  rating: number | null // ✅ AÑADIR ESTO
-
+  notes: string | null
+  rating: number | null
 }
 
 const STATUS_OPTIONS = [
@@ -59,12 +58,12 @@ export default function TitleDetailsPage() {
   const [adding, setAdding] = useState(false)
   const [watchEntry, setWatchEntry] = useState<WatchEntry | null>(null)
   const [checking, setChecking] = useState(true)
-  const [country, setCountry] = useState('ES') // ✅ Estado para el país
-  const [notesTimeout, setNotesTimeout] = useState<NodeJS.Timeout | null>(null) // ✅ AÑADIR ESTO
+  const [country, setCountry] = useState('ES')
+  const [notesTimeout, setNotesTimeout] = useState<NodeJS.Timeout | null>(null)
 
   useEffect(() => {
     const profileId = localStorage.getItem('currentProfileId')
-    let defaultCountry = 'ES' // País por defecto
+    let defaultCountry = 'ES'
 
     const loadTitle = (countryCode: string) => {
       fetch(`/api/title/${mediaType}/${id}?country=${countryCode}`)
@@ -80,20 +79,17 @@ export default function TitleDetailsPage() {
     }
 
     if (profileId) {
-      // 1. Obtener perfiles para saber el país del usuario actual
       fetch('/api/profiles')
         .then(res => res.json())
         .then(profiles => {
           const current = profiles.find((p: any) => p.id === profileId)
           if (current) {
-            setCountry(current.countryCode) // ✅ Guardar en el estado
+            setCountry(current.countryCode)
             defaultCountry = current.countryCode
           }
           
-          // 2. Cargar título con el país correcto
           loadTitle(defaultCountry)
 
-          // 3. Verificar si ya está en la biblioteca
           return fetch(`/api/library/check?profileId=${profileId}&titleId=${id}`)
         })
         .then(res => res?.json())
@@ -108,15 +104,13 @@ export default function TitleDetailsPage() {
           setChecking(false)
         })
     } else {
-      // Si no hay perfil, usar país por defecto
       loadTitle(defaultCountry)
       setChecking(false)
     }
   }, [mediaType, id])
 
-    const handleAddToLibrary = async () => {
+  const handleAddToLibrary = async () => {
     if (!title) return
-
     const profileId = localStorage.getItem('currentProfileId')
     if (!profileId) {
       alert('No hay perfil seleccionado')
@@ -124,7 +118,6 @@ export default function TitleDetailsPage() {
     }
 
     setAdding(true)
-
     try {
       const titleName = title.mediaType === 'movie' ? title.title : title.name
       const releaseDate = title.mediaType === 'movie' ? title.release_date : title.first_air_date
@@ -162,72 +155,50 @@ export default function TitleDetailsPage() {
     }
   }
 
-  // ✅ FUNCIÓN DE NOTAS CON DEBOUNCE (Escritura fluida)
   const handleNotesChange = (newNotes: string) => {
     if (!watchEntry) return
-
-    // 1. Actualizar el estado local INMEDIATAMENTE para que la escritura sea fluida
     setWatchEntry({ ...watchEntry, notes: newNotes })
+    if (notesTimeout) clearTimeout(notesTimeout)
 
-    // 2. Limpiar el temporizador anterior si el usuario sigue escribiendo
-    if (notesTimeout) {
-      clearTimeout(notesTimeout)
-    }
-
-    // 3. Programar el guardado en la base de datos 500ms después de la última tecla
     const timeout = setTimeout(async () => {
       try {
-        const response = await fetch(`/api/library/entry/${watchEntry.id}`, {
+        await fetch(`/api/library/entry/${watchEntry.id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ notes: newNotes }),
         })
-        if (!response.ok) {
-          console.error('Error al guardar notas en la base de datos')
-        }
       } catch (error) {
         console.error('Error al guardar notas:', error)
       }
-    }, 500) // Espera 500ms (medio segundo)
-
+    }, 500)
     setNotesTimeout(timeout)
   }
 
   const handleStatusChange = async (newStatus: string) => {
     if (!watchEntry) return
-
     try {
       const response = await fetch(`/api/library/entry/${watchEntry.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: newStatus }),
       })
-
       if (response.ok) {
         const data = await response.json()
         setWatchEntry(data.entry)
-      } else {
-        alert('Error al actualizar estado')
       }
     } catch (error) {
       console.error('Error:', error)
-      alert('Error al actualizar estado')
     }
   }
 
   const handleProgressChange = async (season: number, episode: number) => {
     if (!watchEntry) return
-
     try {
       const response = await fetch(`/api/library/entry/${watchEntry.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          currentSeason: season, 
-          currentEpisode: episode 
-        }),
+        body: JSON.stringify({ currentSeason: season, currentEpisode: episode }),
       })
-
       if (response.ok) {
         const data = await response.json()
         setWatchEntry(data.entry)
@@ -239,16 +210,12 @@ export default function TitleDetailsPage() {
 
   const handleSeenTogetherToggle = async () => {
     if (!watchEntry) return
-
     try {
       const response = await fetch(`/api/library/entry/${watchEntry.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          seenTogether: !watchEntry.seenTogether 
-        }),
+        body: JSON.stringify({ seenTogether: !watchEntry.seenTogether }),
       })
-
       if (response.ok) {
         const data = await response.json()
         setWatchEntry(data.entry)
@@ -258,12 +225,9 @@ export default function TitleDetailsPage() {
     }
   }
 
-  // ✅ Función para cambiar el país (colocada ANTES del return)
   const handleCountryChange = async (newCountry: string) => {
     setCountry(newCountry)
     setLoading(true)
-    
-    // Actualizar el país en el perfil (base de datos)
     const profileId = localStorage.getItem('currentProfileId')
     if (profileId) {
       fetch(`/api/profiles/${profileId}`, {
@@ -272,8 +236,6 @@ export default function TitleDetailsPage() {
         body: JSON.stringify({ countryCode: newCountry }),
       }).catch(err => console.error('Error al guardar país:', err))
     }
-
-    // Recargar los detalles del título con el nuevo país
     try {
       const res = await fetch(`/api/title/${mediaType}/${id}?country=${newCountry}`)
       const data = await res.json()
@@ -306,42 +268,57 @@ export default function TitleDetailsPage() {
   const year = releaseDate ? releaseDate.substring(0, 4) : '—'
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white">
+    <div className="min-h-screen bg-gray-900 text-white pb-12">
+      
+      {/* ✅ Botón Volver Flotante (Siempre visible, no empuja el contenido) */}
+      <button
+        onClick={() => window.history.back()}
+        className="absolute top-4 left-4 z-20 bg-black/50 hover:bg-black/70 text-white px-3 py-2 rounded-full backdrop-blur-sm transition-colors flex items-center gap-2 text-sm font-medium"
+      >
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+        </svg>
+        Volver
+      </button>
+
       {/* Backdrop */}
-      {title.backdrop_path && (
-        <div className="relative h-96 w-full">
+      <div className="relative h-72 md:h-96 w-full">
+        {title.backdrop_path ? (
           <img
             src={`https://image.tmdb.org/t/p/original${title.backdrop_path}`}
             alt={titleName || 'Backdrop'}
             className="w-full h-full object-cover"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-gray-900 via-gray-900/50 to-transparent" />
-        </div>
-      )}
+        ) : (
+          <div className="w-full h-full bg-gray-800 flex items-center justify-center">
+            <span className="text-gray-600 text-4xl">🎬</span>
+          </div>
+        )}
+        {/* Degradado para que el texto de encima sea legible */}
+        <div className="absolute inset-0 bg-gradient-to-t from-gray-900 via-gray-900/60 to-transparent" />
+      </div>
 
-      {/* Contenido */}
-      <div className="max-w-6xl mx-auto px-4 -mt-32 relative z-10">
-        <button
-  onClick={() => window.history.back()}
-  className="mb-6 text-blue-400 hover:text-blue-300 font-medium flex items-center gap-2"
->
-  ← Volver a la biblioteca
-</button>
+      {/* ✅ Contenido Principal Superpuesto (-mt-24 en móvil, -mt-32 en escritorio) */}
+      <div className="relative z-10 -mt-24 md:-mt-32 px-4 max-w-6xl mx-auto">
+        <div className="flex flex-col md:flex-row gap-6 md:gap-8">
+          
+{/* Poster */}
+{title.poster_path ? (
+  <img
+    src={`https://image.tmdb.org/t/p/w500${title.poster_path}`}
+    alt={titleName || 'Poster'}
+    className="w-40 md:w-56 aspect-[2/3] object-cover rounded-lg shadow-2xl border-2 border-gray-800 flex-shrink-0 mx-auto md:mx-0"
+  />
+) : (
+  <div className="w-40 md:w-56 aspect-[2/3] bg-gray-800 rounded-lg shadow-2xl border-2 border-gray-700 flex items-center justify-center flex-shrink-0 mx-auto md:mx-0">
+    <span className="text-gray-500 text-4xl">🎬</span>
+  </div>
+)}
 
-        <div className="flex flex-col md:flex-row gap-8">
-          {/* Poster */}
-          {title.poster_path && (
-            <img
-              src={`https://image.tmdb.org/t/p/w500${title.poster_path}`}
-              alt={titleName || 'Poster'}
-              className="w-full max-w-xs md:max-w-sm h-auto rounded-lg shadow-2xl flex-shrink-0 self-start"
-            />
-          )}
-
-          {/* Info */}
-          <div className="flex-1">
-            <h1 className="text-4xl font-bold mb-2">{titleName}</h1>
-            <div className="flex items-center gap-4 text-sm text-gray-400 mb-4">
+          {/* Info y Acciones */}
+          <div className="flex-1 text-center md:text-left pt-2 md:pt-12">
+            <h1 className="text-3xl md:text-4xl font-bold mb-2">{titleName}</h1>
+            <div className="flex flex-wrap items-center justify-center md:justify-start gap-3 text-sm text-gray-300 mb-4">
               <span>{year}</span>
               <span>•</span>
               <span>⭐ {title.vote_average ? title.vote_average.toFixed(1) : '—'}</span>
@@ -349,16 +326,18 @@ export default function TitleDetailsPage() {
               <span>{title.mediaType === 'movie' ? '🎬 Película' : '📺 Serie'}</span>
             </div>
 
-            {/* Botón de biblioteca con estado y Progreso */}
-            <div className="mb-8 space-y-4">
+            {/* Sección de Biblioteca */}
+            <div className="space-y-4">
               {watchEntry ? (
                 <>
-                  <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-                    <span className="text-green-400 font-medium">✅ En tu biblioteca</span>
+                  <div className="flex flex-col sm:flex-row items-center sm:items-start gap-3 justify-center md:justify-start">
+                    <span className="text-green-400 font-medium text-sm bg-green-900/30 px-3 py-1 rounded-full border border-green-800">
+                      ✅ En tu biblioteca
+                    </span>
                     <select
                       value={watchEntry.status}
                       onChange={(e) => handleStatusChange(e.target.value)}
-                      className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                     >
                       {STATUS_OPTIONS.map((option) => (
                         <option key={option.value} value={option.value}>
@@ -367,8 +346,7 @@ export default function TitleDetailsPage() {
                       ))}
                     </select>
                     
-                    {/* Checkbox Visto Juntos */}
-                    <label className="flex items-center gap-2 cursor-pointer select-none bg-gray-800/50 border border-gray-700 rounded-lg px-3 py-2 hover:bg-gray-800 transition-colors">
+                    <label className="flex items-center gap-2 cursor-pointer select-none bg-gray-800/50 border border-gray-700 rounded-lg px-3 py-1.5 hover:bg-gray-800 transition-colors">
                       <input
                         type="checkbox"
                         checked={watchEntry.seenTogether || false}
@@ -379,8 +357,8 @@ export default function TitleDetailsPage() {
                     </label>
                   </div>
 
-                                    {/* Selector de Valoración (1-10) */}
-                  <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-4">
+                  {/* Selector de Valoración */}
+                  <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-4 max-w-md mx-auto md:mx-0">
                     <h3 className="text-sm font-semibold text-gray-300 mb-2 flex items-center gap-2">
                       ⭐ Tu valoración
                     </h3>
@@ -388,10 +366,7 @@ export default function TitleDetailsPage() {
                       value={watchEntry.rating || ''}
                       onChange={async (e) => {
                         const newRating = e.target.value ? parseInt(e.target.value) : null
-                        // Actualizar estado local inmediatamente
                         setWatchEntry({ ...watchEntry, rating: newRating })
-                        
-                        // Guardar en base de datos
                         try {
                           await fetch(`/api/library/entry/${watchEntry.id}`, {
                             method: 'PUT',
@@ -413,8 +388,8 @@ export default function TitleDetailsPage() {
                     </select>
                   </div>
 
-                                    {/* Área de Notas Personales */}
-                  <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-4">
+                  {/* Área de Notas */}
+                  <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-4 max-w-md mx-auto md:mx-0">
                     <h3 className="text-sm font-semibold text-gray-300 mb-2 flex items-center gap-2">
                       📝 Mis notas
                     </h3>
@@ -426,9 +401,9 @@ export default function TitleDetailsPage() {
                     />
                   </div>
 
-                  {/* Selectores de Temporada y Capítulo (Solo para series) */}
+                  {/* Progreso (Solo series) */}
                   {title.mediaType === 'tv' && title.seasons && (
-                    <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-4">
+                    <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-4 max-w-md mx-auto md:mx-0">
                       <h3 className="text-sm font-semibold text-gray-300 mb-3 flex items-center gap-2">
                         📺 Tu progreso actual
                       </h3>
@@ -452,7 +427,6 @@ export default function TitleDetailsPage() {
                               ))}
                           </select>
                         </div>
-
                         <div className="flex-1">
                           <label className="block text-xs text-gray-500 mb-1">Capítulo</label>
                           <select
@@ -469,11 +443,8 @@ export default function TitleDetailsPage() {
                                 (s) => s.season_number === (watchEntry.currentSeason || 1)
                               )
                               const episodeCount = currentSeasonData?.episode_count || 1
-                              
                               return Array.from({ length: episodeCount }, (_, i) => i + 1).map((ep) => (
-                                <option key={ep} value={ep}>
-                                  Capítulo {ep}
-                                </option>
+                                <option key={ep} value={ep}>Capítulo {ep}</option>
                               ))
                             })()}
                           </select>
@@ -487,9 +458,7 @@ export default function TitleDetailsPage() {
                   onClick={handleAddToLibrary}
                   disabled={adding}
                   className={`px-6 py-3 rounded-lg font-medium transition-colors ${
-                    adding
-                      ? 'bg-gray-600 cursor-not-allowed'
-                      : 'bg-blue-600 hover:bg-blue-700'
+                    adding ? 'bg-gray-600 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'
                   }`}
                 >
                   {adding ? 'Añadiendo...' : '➕ Añadir a mi biblioteca'}
@@ -499,95 +468,85 @@ export default function TitleDetailsPage() {
 
             {/* Géneros */}
             {title.genres && title.genres.length > 0 && (
-              <div className="flex flex-wrap gap-2 mb-6">
+              <div className="flex flex-wrap gap-2 mt-6 justify-center md:justify-start">
                 {title.genres.map((genre) => (
-                  <span
-                    key={genre.id}
-                    className="bg-gray-800 px-3 py-1 rounded-full text-sm"
-                  >
+                  <span key={genre.id} className="bg-gray-800 px-3 py-1 rounded-full text-sm">
                     {genre.name}
                   </span>
                 ))}
               </div>
             )}
+          </div>
+        </div>
 
-            {/* Sinopsis */}
-            {title.overview && (
-              <div className="mb-6">
-                <h2 className="text-xl font-bold mb-2">Sinopsis</h2>
-                <p className="text-gray-300 leading-relaxed">{title.overview}</p>
+        {/* Sinopsis, Trailer y Proveedores (Debajo del bloque principal) */}
+        <div className="mt-8 space-y-8">
+          {title.overview && (
+            <div>
+              <h2 className="text-xl font-bold mb-2">Sinopsis</h2>
+              <p className="text-gray-300 leading-relaxed max-w-4xl">{title.overview}</p>
+            </div>
+          )}
+
+          {title.trailerKey && (
+            <div>
+              <h2 className="text-xl font-bold mb-2">Trailer</h2>
+              <div className="aspect-video max-w-3xl rounded-lg overflow-hidden shadow-lg">
+                <iframe
+                  width="100%"
+                  height="100%"
+                  src={`https://www.youtube.com/embed/${title.trailerKey}`}
+                  title="Trailer"
+                  frameBorder="0"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  allowFullScreen
+                />
               </div>
-            )}
+            </div>
+          )}
 
-            {/* Trailer */}
-            {title.trailerKey && (
-              <div className="mb-6">
-                <h2 className="text-xl font-bold mb-2">Trailer</h2>
-                <div className="aspect-video max-w-2xl rounded-lg overflow-hidden">
-                  <iframe
-                    width="100%"
-                    height="100%"
-                    src={`https://www.youtube.com/embed/${title.trailerKey}`}
-                    title="Trailer"
-                    frameBorder="0"
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                    allowFullScreen
-                  />
-                </div>
-              </div>
-            )}
-
-            {/* Proveedores de streaming con Selector de País */}
-            <div className="mb-6">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
-                <h2 className="text-xl font-bold">Disponible en</h2>
-                
-                {/* Selector de País */}
-                <select
-                  value={country}
-                  onChange={(e) => handleCountryChange(e.target.value)}
-                  className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
-                  title="Cambiar país para ver proveedores de streaming"
-                >
-                  <option value="ES">🇪🇸 España</option>
-                  <option value="US">🇺🇸 Estados Unidos</option>
-                  <option value="GB">🇬🇧 Reino Unido</option>
-                  <option value="FR">🇫🇷 Francia</option>
-                  <option value="DE">🇩🇪 Alemania</option>
-                  <option value="IT">🇮🇹 Italia</option>
-                  <option value="PT">🇵🇹 Portugal</option>
-                  <option value="MX">🇲🇽 México</option>
-                  <option value="AR">🇦🇷 Argentina</option>
-                  <option value="JP">🇯🇵 Japón</option>
-                </select>
-              </div>
-
-              {title.providers && title.providers.length > 0 ? (
-                <div className="flex flex-wrap gap-3">
-                  {title.providers.map((provider) => (
-                    <div
-                      key={`${provider.provider_id}-${provider.type}`}
-                      className="flex flex-col items-center gap-1"
-                    >
-                      <img
-                        src={`https://image.tmdb.org/t/p/original${provider.logo_path}`}
-                        alt={provider.provider_name}
-                        className="w-12 h-12 rounded-lg bg-white p-1"
-                        title={`${provider.provider_name} (${provider.type === 'streaming' ? 'Streaming' : provider.type === 'rent' ? 'Alquiler' : 'Compra'})`}
-                      />
-                      <span className="text-xs text-gray-400 text-center max-w-[80px] truncate">
-                        {provider.provider_name}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-gray-500 text-sm italic">
-                  No hay información de proveedores disponible para {country.toUpperCase()} en este momento.
-                </p>
-              )}
+          <div>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
+              <h2 className="text-xl font-bold">Disponible en</h2>
+              <select
+                value={country}
+                onChange={(e) => handleCountryChange(e.target.value)}
+                className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer w-fit"
+              >
+                <option value="ES">🇪🇸 España</option>
+                <option value="US">🇺🇸 Estados Unidos</option>
+                <option value="GB">🇬🇧 Reino Unido</option>
+                <option value="FR">🇫🇷 Francia</option>
+                <option value="DE">🇩🇪 Alemania</option>
+                <option value="IT">🇮🇹 Italia</option>
+                <option value="PT">🇵🇹 Portugal</option>
+                <option value="MX">🇲🇽 México</option>
+                <option value="AR">🇦🇷 Argentina</option>
+                <option value="JP">🇯🇵 Japón</option>
+              </select>
             </div>
 
+            {title.providers && title.providers.length > 0 ? (
+              <div className="flex flex-wrap gap-3">
+                {title.providers.map((provider) => (
+                  <div key={`${provider.provider_id}-${provider.type}`} className="flex flex-col items-center gap-1">
+                    <img
+                      src={`https://image.tmdb.org/t/p/original${provider.logo_path}`}
+                      alt={provider.provider_name}
+                      className="w-12 h-12 rounded-lg bg-white p-1"
+                      title={`${provider.provider_name} (${provider.type === 'streaming' ? 'Streaming' : provider.type === 'rent' ? 'Alquiler' : 'Compra'})`}
+                    />
+                    <span className="text-xs text-gray-400 text-center max-w-[80px] truncate">
+                      {provider.provider_name}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-gray-500 text-sm italic">
+                No hay información de proveedores disponible para {country.toUpperCase()}.
+              </p>
+            )}
           </div>
         </div>
       </div>

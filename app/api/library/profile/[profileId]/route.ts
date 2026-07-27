@@ -8,14 +8,14 @@ export async function GET(
   try {
     const { profileId } = await params
 
-    const entries = await prisma.watchEntry.findMany({
+        const entries = await prisma.watchEntry.findMany({
       where: { profileId },
-      include: {
-        title: true,
-      },
+      include: { title: true },
       orderBy: {
-        updatedAt: 'desc',
-      },
+        title: {
+          name: 'asc', // ✅ CAMBIO CLAVE: Ordenar alfabéticamente para que no salte al actualizar
+        }
+      }
     })
 
     return NextResponse.json(entries)
