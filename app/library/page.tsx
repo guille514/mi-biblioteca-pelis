@@ -44,7 +44,6 @@ const STATUS_FILTERS = [
   { value: 'want_to_watch', label: '💭 Quiero ver' },
   { value: 'paused', label: '⏸️ En pausa' },
   { value: 'abandoned', label: '❌ Abandonado' },
-  { value: 'seen_together', label: '💑 Viendo juntos' }, // ✅ NUEVO
 ]
 
 export default function LibraryPage() {
@@ -54,6 +53,7 @@ export default function LibraryPage() {
   const [filteredLibrary, setFilteredLibrary] = useState<WatchEntry[]>([])
   const [activeFilter, setActiveFilter] = useState('all')
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
+  const [showOnlyTogether, setShowOnlyTogether] = useState(false) // ✅ NUEVO: Interruptor
   
   // Dos buscadores separados
   const [tmdbQuery, setTmdbQuery] = useState('')
@@ -92,17 +92,29 @@ export default function LibraryPage() {
       })
   }, [router])
 
-    // Filtrar biblioteca por estado o por "Visto juntos"
+      // Filtrar biblioteca combinando Estado + Visto Juntos + Búsqueda de texto
   useEffect(() => {
-    if (activeFilter === 'all') {
-      setFilteredLibrary(library)
-    } else if (activeFilter === 'seen_together') {
-      // ✅ Filtrar solo los que tienen el flag seenTogether en true
-      setFilteredLibrary(library.filter(entry => entry.seenTogether === true))
-    } else {
-      setFilteredLibrary(library.filter(entry => entry.status === activeFilter))
+    let result = library
+
+    // 1. Filtrar por estado (si no es "Todas")
+    if (activeFilter !== 'all') {
+      result = result.filter(entry => entry.status === activeFilter)
     }
-  }, [activeFilter, library])
+
+    // 2. Filtrar por "Visto juntos" (si el interruptor está activado)
+    if (showOnlyTogether) {
+      result = result.filter(entry => entry.seenTogether === true)
+    }
+
+    // 3. Filtrar por texto (buscador interno)
+    if (libraryFilter.trim()) {
+      result = result.filter(entry => 
+        entry.title.name.toLowerCase().includes(libraryFilter.toLowerCase())
+      )
+    }
+
+    setFilteredLibrary(result)
+  }, [activeFilter, showOnlyTogether, libraryFilter, library])
 
   // Buscar en TMDB con debounce
   useEffect(() => {
@@ -291,21 +303,41 @@ export default function LibraryPage() {
               </div>
             </div>
 
-            {/* Filtros de estado */}
-            <div className="flex gap-2 overflow-x-auto pb-4 mb-6 scrollbar-hide">
-              {STATUS_FILTERS.map(filter => (
-                <button
-                  key={filter.value}
-                  onClick={() => setActiveFilter(filter.value)}
-                  className={`px-3 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
-                    activeFilter === filter.value
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-white'
-                  }`}
-                >
-                  {filter.label}
-                </button>
-              ))}
+                        {/* Controles de filtro: Interruptor "Visto juntos" + Botones de estado */}
+            <div className="flex flex-col sm:flex-row gap-4 mb-6">
+              
+              {/* Interruptor Visto Juntos */}
+              <label className="flex items-center gap-2 cursor-pointer select-none bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 hover:bg-gray-750 transition-colors w-fit">
+                <input
+                  type="checkbox"
+                  checked={showOnlyTogether}
+                  onChange={(e) => setShowOnlyTogether(e.target.checked)}
+                  className="w-4 h-4 rounded border-gray-600 text-pink-600 focus:ring-pink-500 bg-gray-900 cursor-pointer"
+                />
+                <span className={`text-sm font-medium ${showOnlyTogether ? 'text-pink-400' : 'text-gray-400'}`}>
+                  💑 Solo visto juntos
+                </span>
+              </label>
+
+              {/* Separador vertical (solo en escritorio) */}
+              <div className="hidden sm:block w-px bg-gray-700"></div>
+
+              {/* Botones de estado */}
+              <div className="flex gap-2 overflow-x-auto pb-2 sm:pb-0 scrollbar-hide flex-1">
+                {STATUS_FILTERS.map(filter => (
+                  <button
+                    key={filter.value}
+                    onClick={() => setActiveFilter(filter.value)}
+                    className={`px-3 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
+                      activeFilter === filter.value
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-white'
+                    }`}
+                  >
+                    {filter.label}
+                  </button>
+                ))}
+              </div>
             </div>
 
             {/* Contenido de la biblioteca */}
