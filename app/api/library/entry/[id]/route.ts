@@ -9,9 +9,8 @@ export async function PUT(
     const { id } = await params
     const body = await request.json()
     
-    const { status, platforms, currentSeason, currentEpisode, seenTogether } = body
+    const { status, platforms, currentSeason, currentEpisode, seenTogether, notes } = body
 
-    // Actualizar la entrada actual
     const entry = await prisma.watchEntry.update({
       where: { id },
       data: {
@@ -20,64 +19,34 @@ export async function PUT(
         currentSeason: currentSeason !== undefined ? currentSeason : undefined,
         currentEpisode: currentEpisode !== undefined ? currentEpisode : undefined,
         seenTogether: seenTogether !== undefined ? seenTogether : undefined,
+        notes: notes !== undefined ? notes : undefined, // ✅ Guardar notas
         updatedAt: new Date(),
       },
     })
 
-    // Si se cambió seenTogether, sincronizar con el otro perfil
+    // Si se cambió seenTogether, sincronizar con el otro perfil (lógica existente)
     if (seenTogether !== undefined) {
-      // Obtener el título y el perfil actual
       const currentEntry = await prisma.watchEntry.findUnique({
         where: { id },
-        include: {
-          title: true,
-          profile: true,
-        },
+        include: { profile: true },
       })
 
       if (currentEntry) {
-        // Buscar el otro perfil (asumimos que solo hay 2 perfiles)
         const otherProfile = await prisma.profile.findFirst({
-          where: {
-            id: { not: currentEntry.profileId },
-          },
+          where: { id: { not: currentEntry.profileId } },
         })
 
         if (otherProfile) {
           if (seenTogether) {
-            // Si se marca como "Visto juntos", crear/actualizar entrada en el otro perfil
             await prisma.watchEntry.upsert({
-              where: {
-                profileId_titleId: {
-                  profileId: otherProfile.id,
-                  titleId: currentEntry.titleId,
-                },
-              },
-              update: {
-                seenTogether: true,
-                status: currentEntry.status, // Mismo estado
-                platforms: currentEntry.platforms,
-                updatedAt: new Date(),
-              },
-              create: {
-                profileId: otherProfile.id,
-                titleId: currentEntry.titleId,
-                seenTogether: true,
-                status: currentEntry.status,
-                platforms: currentEntry.platforms,
-              },
+              where: { profileId_titleId: { profileId: otherProfile.id, titleId: currentEntry.titleId } },
+              update: { seenTogether: true, status: currentEntry.status, platforms: currentEntry.platforms, updatedAt: new Date() },
+              create: { profileId: otherProfile.id, titleId: currentEntry.titleId, seenTogether: true, status: currentEntry.status, platforms: currentEntry.platforms },
             })
           } else {
-            // Si se desmarca, quitar el flag del otro perfil también
             await prisma.watchEntry.updateMany({
-              where: {
-                profileId: otherProfile.id,
-                titleId: currentEntry.titleId,
-              },
-              data: {
-                seenTogether: false,
-                updatedAt: new Date(),
-              },
+              where: { profileId: otherProfile.id, titleId: currentEntry.titleId },
+              data: { seenTogether: false, updatedAt: new Date() },
             })
           }
         }
@@ -86,10 +55,41 @@ export async function PUT(
 
     return NextResponse.json({ success: true, entry })
   } catch (error) {
-    console.error('Error al actualizar biblioteca:', error)
-    return NextResponse.json(
-      { error: 'Error interno del servidor' },
-      { status: 500 }
-    )
+    console.error('Error al actualizar:', error)
+    return NextResponse.json({ error: 'Error interno' }, { status: 500 })
+  }
+}
+
+// ✅ NUEVO: Endpoint para eliminar de la biblioteca
+export async function DELETE(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await params
+    
+    // Obtener datos antes de borrar para sincronizar el "visto juntos" si es necesario
+    const entry = await prisma.watchEntry.findUnique({
+      where: { id },
+      include: { profile: true },
+    })
+
+    if (entry?.seenTogether) {
+      const otherProfile = await prisma.profile.findFirst({
+        where: { id: { not: entry.profileId } },
+      })
+      if (otherProfile) {
+        await prisma.watchEntry.updateMany({
+          where: { profileId: otherProfile.id, titleId: entry.titleId },
+          data: { seenTogether: false, updatedAt: new Date() },
+        })
+      }
+    }
+
+    await prisma.watchEntry.delete({ where: { id } })
+    return NextResponse.json({ success: true })
+  } catch (error) {
+    console.error('Error al eliminar:', error)
+    return NextResponse.json({ error: 'Error interno' }, { status: 500 })
   }
 }

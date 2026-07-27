@@ -50,9 +50,9 @@ model WatchEntry {
   profileId       String
   titleId         Int
   
-  status          WatchStatus @default(not_started)
-  notes           String?     @db.Text
-  seenTogether    Boolean     @default(false) // 💑 Marcador de contenido compartido
+  status          WatchStatus @default(want_to_watch) // ✅ Cambiado a 'want_to_watch' por defecto al añadir
+  notes           String?     @db.Text                 // ✅ Campo para notas personales
+  seenTogether    Boolean     @default(false)          // 💑 Marcador de contenido compartido
   
   platforms       String[]    // Ej: ["Netflix", "HBO Max"]
   currentSeason   Int?        // Solo para series

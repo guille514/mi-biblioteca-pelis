@@ -36,6 +36,7 @@ interface WatchEntry {
   currentSeason: number | null
   currentEpisode: number | null
   seenTogether: boolean
+  notes: string | null // ✅ NUEVO
 }
 
 const STATUS_OPTIONS = [
@@ -155,6 +156,23 @@ export default function TitleDetailsPage() {
       alert('Error al añadir a la biblioteca')
     } finally {
       setAdding(false)
+    }
+  }
+
+    const handleNotesChange = async (newNotes: string) => {
+    if (!watchEntry) return
+    try {
+      const response = await fetch(`/api/library/entry/${watchEntry.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ notes: newNotes }),
+      })
+      if (response.ok) {
+        const data = await response.json()
+        setWatchEntry(data.entry)
+      }
+    } catch (error) {
+      console.error('Error al guardar notas:', error)
     }
   }
 
@@ -287,11 +305,11 @@ export default function TitleDetailsPage() {
       {/* Contenido */}
       <div className="max-w-6xl mx-auto px-4 -mt-32 relative z-10">
         <button
-          onClick={() => router.back()}
-          className="mb-6 text-blue-400 hover:text-blue-300 font-medium"
-        >
-          ← Volver
-        </button>
+  onClick={() => window.history.back()}
+  className="mb-6 text-blue-400 hover:text-blue-300 font-medium flex items-center gap-2"
+>
+  ← Volver a la biblioteca
+</button>
 
         <div className="flex flex-col md:flex-row gap-8">
           {/* Poster */}
@@ -342,6 +360,19 @@ export default function TitleDetailsPage() {
                       />
                       <span className="text-sm font-medium text-pink-400">💑 Visto juntos</span>
                     </label>
+                  </div>
+
+                                    {/* Área de Notas Personales */}
+                  <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-4">
+                    <h3 className="text-sm font-semibold text-gray-300 mb-2 flex items-center gap-2">
+                      📝 Mis notas
+                    </h3>
+                    <textarea
+                      value={watchEntry.notes || ''}
+                      onChange={(e) => handleNotesChange(e.target.value)}
+                      placeholder="Escribe aquí por qué quieres verla, qué te pareció, o cualquier recuerdo..."
+                      className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-y min-h-[80px]"
+                    />
                   </div>
 
                   {/* Selectores de Temporada y Capítulo (Solo para series) */}
