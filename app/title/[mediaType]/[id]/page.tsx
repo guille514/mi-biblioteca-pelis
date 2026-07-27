@@ -58,6 +58,7 @@ export default function TitleDetailsPage() {
   const [watchEntry, setWatchEntry] = useState<WatchEntry | null>(null)
   const [checking, setChecking] = useState(true)
   const [country, setCountry] = useState('ES') // ✅ Estado para el país
+  const [notesTimeout, setNotesTimeout] = useState<NodeJS.Timeout | null>(null) // ✅ AÑADIR ESTO
 
   useEffect(() => {
     const profileId = localStorage.getItem('currentProfileId')
@@ -111,7 +112,7 @@ export default function TitleDetailsPage() {
     }
   }, [mediaType, id])
 
-  const handleAddToLibrary = async () => {
+    const handleAddToLibrary = async () => {
     if (!title) return
 
     const profileId = localStorage.getItem('currentProfileId')
@@ -159,21 +160,35 @@ export default function TitleDetailsPage() {
     }
   }
 
-    const handleNotesChange = async (newNotes: string) => {
+  // ✅ FUNCIÓN DE NOTAS CON DEBOUNCE (Escritura fluida)
+  const handleNotesChange = (newNotes: string) => {
     if (!watchEntry) return
-    try {
-      const response = await fetch(`/api/library/entry/${watchEntry.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ notes: newNotes }),
-      })
-      if (response.ok) {
-        const data = await response.json()
-        setWatchEntry(data.entry)
-      }
-    } catch (error) {
-      console.error('Error al guardar notas:', error)
+
+    // 1. Actualizar el estado local INMEDIATAMENTE para que la escritura sea fluida
+    setWatchEntry({ ...watchEntry, notes: newNotes })
+
+    // 2. Limpiar el temporizador anterior si el usuario sigue escribiendo
+    if (notesTimeout) {
+      clearTimeout(notesTimeout)
     }
+
+    // 3. Programar el guardado en la base de datos 500ms después de la última tecla
+    const timeout = setTimeout(async () => {
+      try {
+        const response = await fetch(`/api/library/entry/${watchEntry.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ notes: newNotes }),
+        })
+        if (!response.ok) {
+          console.error('Error al guardar notas en la base de datos')
+        }
+      } catch (error) {
+        console.error('Error al guardar notas:', error)
+      }
+    }, 500) // Espera 500ms (medio segundo)
+
+    setNotesTimeout(timeout)
   }
 
   const handleStatusChange = async (newStatus: string) => {
