@@ -77,9 +77,48 @@ export async function GET(request: Request) {
                 nextSeasonNumber = null
               }
             } else {
-              // Para películas: usar release_date si es futura
-              if (data.release_date && new Date(data.release_date) > now) {
-                nextAirDate = data.release_date
+              // ✅ Para películas: intentar obtener la fecha de estreno específica por país
+              let bestReleaseDate = data.release_date
+              
+              try {
+                const datesRes = await fetch(
+                  `https://api.themoviedb.org/3/movie/${title.id}/release_dates?api_key=${apiKey}`,
+                  { headers: { accept: 'application/json' } }
+                )
+                
+                if (datesRes.ok) {
+                  const datesData = await datesRes.json()
+                  
+                  // 1. Buscar primero la fecha de estreno en España (ES)
+                  const esRelease = datesData.results?.find((r: any) => r.iso_3166_1 === 'ES')
+                  if (esRelease && esRelease.release_dates && esRelease.release_dates.length > 0) {
+                    // Ordenar por fecha para obtener la más temprana en cines/streaming en España
+                    const sortedDates = esRelease.release_dates.sort((a: any, b: any) => 
+                      new Date(a.release_date).getTime() - new Date(b.release_date).getTime()
+                    )
+                    bestReleaseDate = sortedDates[0].release_date.split('T')[0] // Extraer solo "YYYY-MM-DD"
+                  } 
+                  // 2. Si no hay fecha para España, usar EE.UU. (US) como fallback habitual
+                  else {
+                    const usRelease = datesData.results?.find((r: any) => r.iso_3166_1 === 'US')
+                    if (usRelease && usRelease.release_dates && usRelease.release_dates.length > 0) {
+                      const sortedDates = usRelease.release_dates.sort((a: any, b: any) => 
+                        new Date(a.release_date).getTime() - new Date(b.release_date).getTime()
+                      )
+                      bestReleaseDate = sortedDates[0].release_date.split('T')[0]
+                    }
+                  }
+                }
+              } catch (err) {
+                console.error(`Error obteniendo fechas por país para ${title.name}:`, err)
+                // Si falla, se queda con el bestReleaseDate original (global)
+              }
+
+              // Comparar fechas como strings ("YYYY-MM-DD") para evitar problemas de zona horaria
+              const todayStr = now.toISOString().split('T')[0]
+              
+              if (bestReleaseDate && bestReleaseDate >= todayStr) {
+                nextAirDate = bestReleaseDate
                 nextSeasonNumber = null
               } else {
                 nextAirDate = null
@@ -106,7 +145,9 @@ export async function GET(request: Request) {
       }
 
       // Añadir a la lista solo si tiene fecha de estreno futura
-      if (nextAirDate && new Date(nextAirDate) >= now) {
+      // ✅ Comparación segura de strings para evitar bugs de zona horaria
+      const todayStr = new Date().toISOString().split('T')[0]
+      if (nextAirDate && nextAirDate >= todayStr) {
         upcomingReleases.push({
           titleId: title.id,
           name: title.name,

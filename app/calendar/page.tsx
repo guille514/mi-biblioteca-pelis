@@ -74,7 +74,7 @@ export default function CalendarPage() {
   const nextMonth = () => setCurrentDate(new Date(year, month + 1, 1))
   const goToToday = () => setCurrentDate(new Date())
 
-  // Obtener estrenos de un día específico
+  // Obtener estrenos de un día específico (CORREGIDO para zonas horarias)
   const getReleasesForDay = (day: number) => {
     const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
     return releases.filter(r => r.releaseDate === dateStr)
@@ -91,12 +91,13 @@ export default function CalendarPage() {
     })
   )
 
+  // CORREGIDO: Parsear fechas respetando zona horaria local
   const selectedDayReleases = selectedDay 
     ? releases.filter(r => {
-        const d = new Date(r.releaseDate)
-        return d.getDate() === parseInt(selectedDay) && 
-               d.getMonth() === month && 
-               d.getFullYear() === year
+        const [rYear, rMonth, rDay] = r.releaseDate.split('-').map(Number)
+        return rDay === parseInt(selectedDay) && 
+               (rMonth - 1) === month && 
+               rYear === year
       })
     : []
 
