@@ -128,21 +128,6 @@ export default function LibraryPage() {
     router.push('/')
   }
 
-    const handleCountryChange = async (newCountry: string) => {
-    try {
-      const response = await fetch(`/api/profiles/${profile.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ countryCode: newCountry }),
-      })
-      if (response.ok) {
-        setProfile({ ...profile, countryCode: newCountry })
-      }
-    } catch (error) {
-      console.error('Error al cambiar país:', error)
-    }
-  }
-
   if (loading || !profile) {
     return (
       <div className="min-h-screen bg-gray-900 flex items-center justify-center">
