@@ -17,6 +17,7 @@ interface WatchEntry {
   id: string
   status: string
   seenTogether: boolean
+  rating: number | null  // ✅ AÑADIR ESTO
   title: Title
 }
 
@@ -219,6 +220,13 @@ export default function LibraryPage() {
               </div>
               <span className="text-sm font-medium hidden sm:inline">{profile.name}</span>
             </div>
+
+            <button
+  onClick={() => router.push('/calendar')}
+  className="text-sm text-gray-400 hover:text-white transition-colors"
+>
+  📅 Calendario
+</button>
             
             <button
               onClick={handleLogout}
@@ -496,19 +504,25 @@ export default function LibraryPage() {
                           )}
                         </div>
                         <div className="mt-2">
-                          <h3 className="font-medium text-sm line-clamp-2 group-hover:text-blue-400 transition-colors">
-                            {entry.title.name}
-                          </h3>
-                          <div className="flex items-center gap-2 text-xs text-gray-400 mt-1">
-                            <span>{year}</span>
-                            {entry.title.voteAverage && (
-                              <>
-                                <span>•</span>
-                                <span>⭐ {entry.title.voteAverage.toFixed(1)}</span>
-                              </>
-                            )}
-                          </div>
-                        </div>
+  <h3 className="font-medium text-sm line-clamp-2 group-hover:text-blue-400 transition-colors">
+    {entry.title.name}
+  </h3>
+  <div className="flex items-center gap-2 text-xs text-gray-400 mt-1 flex-wrap">
+    <span>{year}</span>
+    {entry.title.voteAverage && (
+      <>
+        <span>•</span>
+        <span>⭐ {entry.title.voteAverage.toFixed(1)}</span>
+      </>
+    )}
+    {entry.rating && (
+      <>
+        <span>•</span>
+        <span className="text-yellow-400 font-medium">🎯 {entry.rating}/10</span>
+      </>
+    )}
+  </div>
+</div>
                       </Link>
                     )
                   }
@@ -537,13 +551,14 @@ export default function LibraryPage() {
                             {entry.title.mediaType === 'movie' ? '🎬 Película' : '📺 Serie'}
                           </span>
                         </div>
-                        <div className="flex items-center gap-3 text-xs text-gray-400 mt-1">
-                          <span>{year}</span>
-                          {entry.title.voteAverage && <span>⭐ {entry.title.voteAverage.toFixed(1)}</span>}
-                          <span className="px-2 py-0.5 rounded bg-gray-700 text-gray-300">
-                            {STATUS_FILTERS.find(f => f.value === entry.status)?.label || entry.status}
-                          </span>
-                        </div>
+                        <div className="flex items-center gap-3 text-xs text-gray-400 mt-1 flex-wrap">
+  <span>{year}</span>
+  {entry.title.voteAverage && <span>⭐ {entry.title.voteAverage.toFixed(1)}</span>}
+  {entry.rating && <span className="text-yellow-400 font-medium">🎯 {entry.rating}/10</span>}
+  <span className="px-2 py-0.5 rounded bg-gray-700 text-gray-300">
+    {STATUS_FILTERS.find(f => f.value === entry.status)?.label || entry.status}
+  </span>
+</div>
                       </div>
                       
                       {/* Botón Eliminar en Modo Lista */}

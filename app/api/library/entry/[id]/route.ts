@@ -9,7 +9,7 @@ export async function PUT(
     const { id } = await params
     const body = await request.json()
     
-    const { status, platforms, currentSeason, currentEpisode, seenTogether, notes } = body
+    const { status, platforms, currentSeason, currentEpisode, seenTogether, notes, rating } = body
 
     const entry = await prisma.watchEntry.update({
       where: { id },
@@ -20,6 +20,7 @@ export async function PUT(
         currentEpisode: currentEpisode !== undefined ? currentEpisode : undefined,
         seenTogether: seenTogether !== undefined ? seenTogether : undefined,
         notes: notes !== undefined ? notes : undefined, // ✅ Guardar notas
+        rating: rating !== undefined ? rating : undefined, // ✅ AÑADIR ESTO
         updatedAt: new Date(),
       },
     })

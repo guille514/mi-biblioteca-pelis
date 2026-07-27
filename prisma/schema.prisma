@@ -28,17 +28,22 @@ model Profile {
   watchEntries WatchEntry[]
 }
 
-// Catálogo de títulos (películas y series de TMDB)
 model Title {
-  id          Int          @id // Usaremos el ID de TMDB como ID principal
-  mediaType   String       // "movie" o "tv"
+  id          Int          @id
+  mediaType   String
   name        String
   posterUrl   String?
   backdropUrl String?
   overview    String?      @db.Text
-  releaseDate String?      // Formato "YYYY-MM-DD"
+  releaseDate String?
   voteAverage Float?
-  genres      String[]     // Array de géneros (ej: ["Acción", "Drama"])
+  genres      String[]
+  
+  // ✅ NUEVOS CAMPOS PARA EL CALENDARIO
+  nextAirDate     String?   // Fecha del próximo estreno (YYYY-MM-DD)
+  nextSeasonNumber Int?     // Número de la próxima temporada (solo series)
+  airDateUpdatedAt DateTime? // Cuándo actualizamos esta info por última vez
+  
   createdAt   DateTime     @default(now())
   
   watchEntries WatchEntry[]
@@ -52,6 +57,7 @@ model WatchEntry {
   
   status          WatchStatus @default(want_to_watch) // ✅ Cambiado a 'want_to_watch' por defecto al añadir
   notes           String?     @db.Text                 // ✅ Campo para notas personales
+  rating          Int?        // ✅ NUEVO: Valoración del 1 al 10
   seenTogether    Boolean     @default(false)          // 💑 Marcador de contenido compartido
   
   platforms       String[]    // Ej: ["Netflix", "HBO Max"]

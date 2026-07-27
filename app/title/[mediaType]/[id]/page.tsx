@@ -37,6 +37,8 @@ interface WatchEntry {
   currentEpisode: number | null
   seenTogether: boolean
   notes: string | null // ✅ NUEVO
+  rating: number | null // ✅ AÑADIR ESTO
+
 }
 
 const STATUS_OPTIONS = [
@@ -375,6 +377,40 @@ export default function TitleDetailsPage() {
                       />
                       <span className="text-sm font-medium text-pink-400">💑 Visto juntos</span>
                     </label>
+                  </div>
+
+                                    {/* Selector de Valoración (1-10) */}
+                  <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-4">
+                    <h3 className="text-sm font-semibold text-gray-300 mb-2 flex items-center gap-2">
+                      ⭐ Tu valoración
+                    </h3>
+                    <select
+                      value={watchEntry.rating || ''}
+                      onChange={async (e) => {
+                        const newRating = e.target.value ? parseInt(e.target.value) : null
+                        // Actualizar estado local inmediatamente
+                        setWatchEntry({ ...watchEntry, rating: newRating })
+                        
+                        // Guardar en base de datos
+                        try {
+                          await fetch(`/api/library/entry/${watchEntry.id}`, {
+                            method: 'PUT',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ rating: newRating }),
+                          })
+                        } catch (error) {
+                          console.error('Error al guardar valoración:', error)
+                        }
+                      }}
+                      className="w-full bg-gray-900 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-yellow-500"
+                    >
+                      <option value="">Sin valorar</option>
+                      {[10, 9, 8, 7, 6, 5, 4, 3, 2, 1].map((num) => (
+                        <option key={num} value={num}>
+                          {num} / 10 {num >= 9 ? '🔥' : num >= 7 ? '👍' : num <= 4 ? '👎' : '😐'}
+                        </option>
+                      ))}
+                    </select>
                   </div>
 
                                     {/* Área de Notas Personales */}
