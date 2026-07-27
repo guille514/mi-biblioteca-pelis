@@ -53,8 +53,9 @@ export default function LibraryPage() {
   const [filteredLibrary, setFilteredLibrary] = useState<WatchEntry[]>([])
   const [activeFilter, setActiveFilter] = useState('all')
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
-  const [showOnlyTogether, setShowOnlyTogether] = useState(false) // ✅ NUEVO: Interruptor
-  
+  const [showOnlyTogether, setShowOnlyTogether] = useState(false)
+  const [typeFilter, setTypeFilter] = useState<'all' | 'movie' | 'tv'>('all')
+
   // Dos buscadores separados
   const [tmdbQuery, setTmdbQuery] = useState('')
   const [tmdbResults, setTmdbResults] = useState<SearchResult[]>([])
@@ -92,21 +93,26 @@ export default function LibraryPage() {
       })
   }, [router])
 
-      // Filtrar biblioteca combinando Estado + Visto Juntos + Búsqueda de texto
+  // Filtrar biblioteca combinando: Tipo + Estado + Visto Juntos + Búsqueda
   useEffect(() => {
     let result = library
 
-    // 1. Filtrar por estado (si no es "Todas")
+    // 1. Filtrar por tipo (Película / Serie)
+    if (typeFilter !== 'all') {
+      result = result.filter(entry => entry.title.mediaType === typeFilter)
+    }
+
+    // 2. Filtrar por estado
     if (activeFilter !== 'all') {
       result = result.filter(entry => entry.status === activeFilter)
     }
 
-    // 2. Filtrar por "Visto juntos" (si el interruptor está activado)
+    // 3. Filtrar por "Visto juntos"
     if (showOnlyTogether) {
       result = result.filter(entry => entry.seenTogether === true)
     }
 
-    // 3. Filtrar por texto (buscador interno)
+    // 4. Filtrar por texto
     if (libraryFilter.trim()) {
       result = result.filter(entry => 
         entry.title.name.toLowerCase().includes(libraryFilter.toLowerCase())
@@ -114,7 +120,7 @@ export default function LibraryPage() {
     }
 
     setFilteredLibrary(result)
-  }, [activeFilter, showOnlyTogether, libraryFilter, library])
+  }, [activeFilter, showOnlyTogether, libraryFilter, typeFilter, library])
 
   // Buscar en TMDB con debounce
   useEffect(() => {
@@ -154,7 +160,7 @@ export default function LibraryPage() {
 
   return (
     <div className="min-h-screen bg-gray-900 text-white">
-                  {/* Header */}
+      {/* Header */}
       <header className="bg-gray-800 border-b border-gray-700 sticky top-0 z-20">
         <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
           <h1 className="text-xl font-bold">🎬 Mi Biblioteca</h1>
@@ -169,12 +175,7 @@ export default function LibraryPage() {
               </div>
               <span className="text-sm font-medium hidden sm:inline">{profile.name}</span>
             </div>
-            <button
-  onClick={() => router.push('/import')}
-  className="text-sm text-gray-400 hover:text-white transition-colors"
->
-  📥 Importar TV Time
-</button>
+            
             <button
               onClick={handleLogout}
               className="text-sm text-gray-400 hover:text-white transition-colors"
@@ -309,27 +310,65 @@ export default function LibraryPage() {
               </div>
             </div>
 
-                        {/* Controles de filtro: Interruptor "Visto juntos" + Botones de estado */}
-            <div className="flex flex-col sm:flex-row gap-4 mb-6">
+            {/* Controles de filtro */}
+            <div className="flex flex-col gap-4 mb-6">
               
-              {/* Interruptor Visto Juntos */}
-              <label className="flex items-center gap-2 cursor-pointer select-none bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 hover:bg-gray-750 transition-colors w-fit">
-                <input
-                  type="checkbox"
-                  checked={showOnlyTogether}
-                  onChange={(e) => setShowOnlyTogether(e.target.checked)}
-                  className="w-4 h-4 rounded border-gray-600 text-pink-600 focus:ring-pink-500 bg-gray-900 cursor-pointer"
-                />
-                <span className={`text-sm font-medium ${showOnlyTogether ? 'text-pink-400' : 'text-gray-400'}`}>
-                  💑 Solo visto juntos
-                </span>
-              </label>
+              {/* Fila 1: Interruptor Visto Juntos + Filtro de Tipo */}
+              <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
+                
+                {/* Interruptor Visto Juntos */}
+                <label className="flex items-center gap-2 cursor-pointer select-none bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 hover:bg-gray-750 transition-colors w-fit">
+                  <input
+                    type="checkbox"
+                    checked={showOnlyTogether}
+                    onChange={(e) => setShowOnlyTogether(e.target.checked)}
+                    className="w-4 h-4 rounded border-gray-600 text-pink-600 focus:ring-pink-500 bg-gray-900 cursor-pointer"
+                  />
+                  <span className={`text-sm font-medium ${showOnlyTogether ? 'text-pink-400' : 'text-gray-400'}`}>
+                    💑 Solo visto juntos
+                  </span>
+                </label>
 
-              {/* Separador vertical (solo en escritorio) */}
-              <div className="hidden sm:block w-px bg-gray-700"></div>
+                {/* Separador */}
+                <div className="hidden sm:block w-px bg-gray-700 h-8"></div>
 
-              {/* Botones de estado */}
-              <div className="flex gap-2 overflow-x-auto pb-2 sm:pb-0 scrollbar-hide flex-1">
+                {/* Filtro de Tipo: Películas / Series */}
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setTypeFilter('all')}
+                    className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                      typeFilter === 'all'
+                        ? 'bg-purple-600 text-white'
+                        : 'bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-white'
+                    }`}
+                  >
+                    🎞️ Todo
+                  </button>
+                  <button
+                    onClick={() => setTypeFilter('movie')}
+                    className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                      typeFilter === 'movie'
+                        ? 'bg-purple-600 text-white'
+                        : 'bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-white'
+                    }`}
+                  >
+                    🎬 Películas
+                  </button>
+                  <button
+                    onClick={() => setTypeFilter('tv')}
+                    className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                      typeFilter === 'tv'
+                        ? 'bg-purple-600 text-white'
+                        : 'bg-gray-800 text-gray-400 hover:bg-gray-700 hover:text-white'
+                    }`}
+                  >
+                    📺 Series
+                  </button>
+                </div>
+              </div>
+
+              {/* Fila 2: Filtros de estado */}
+              <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
                 {STATUS_FILTERS.map(filter => (
                   <button
                     key={filter.value}
@@ -347,9 +386,7 @@ export default function LibraryPage() {
             </div>
 
             {/* Contenido de la biblioteca */}
-            {filteredLibrary.filter(entry => 
-              entry.title.name.toLowerCase().includes(libraryFilter.toLowerCase())
-            ).length === 0 ? (
+            {filteredLibrary.length === 0 ? (
               <div className="text-center py-12 bg-gray-800/50 rounded-xl border border-gray-700 border-dashed">
                 <p className="text-4xl mb-3">🍿</p>
                 <h3 className="text-xl font-bold mb-2">
@@ -364,101 +401,97 @@ export default function LibraryPage() {
                 ? "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4" 
                 : "flex flex-col gap-3"
               }>
-                {filteredLibrary
-                  .filter(entry => 
-                    entry.title.name.toLowerCase().includes(libraryFilter.toLowerCase())
-                  )
-                  .map((entry) => {
-                    const year = entry.title.releaseDate ? entry.title.releaseDate.substring(0, 4) : '—'
-                    
-                    if (viewMode === 'grid') {
-                      return (
-                        <Link 
-                          key={entry.id}
-                          href={`/title/${entry.title.mediaType}/${entry.title.id}`}
-                          className="group relative"
-                        >
-                          <div className="relative aspect-[2/3] rounded-lg overflow-hidden bg-gray-800 shadow-lg">
-                            {entry.title.posterUrl ? (
-                              <img 
-                                src={entry.title.posterUrl}
-                                alt={entry.title.name}
-                                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                              />
-                            ) : (
-                              <div className="w-full h-full flex items-center justify-center text-gray-600 text-sm p-4 text-center">
-                                Sin imagen
-                              </div>
-                            )}
-                            
-                            {/* Badge Visto juntos */}
-                            {entry.seenTogether && (
-                              <div className="absolute top-2 left-2 bg-pink-600 text-white text-xs px-2 py-1 rounded-full font-bold shadow-md flex items-center gap-1">
-                                💑
-                              </div>
-                            )}
-                            
-                            {/* Badge Tipo */}
-                            <div className="absolute top-2 right-2 bg-black/70 text-white text-xs px-2 py-1 rounded">
-                              {entry.title.mediaType === 'movie' ? '🎬' : '📺'}
-                            </div>
-                          </div>
-                          <div className="mt-2">
-                            <h3 className="font-medium text-sm line-clamp-2 group-hover:text-blue-400 transition-colors">
-                              {entry.title.name}
-                            </h3>
-                            <div className="flex items-center gap-2 text-xs text-gray-400 mt-1">
-                              <span>{year}</span>
-                              {entry.title.voteAverage && (
-                                <>
-                                  <span>•</span>
-                                  <span>⭐ {entry.title.voteAverage.toFixed(1)}</span>
-                                </>
-                              )}
-                            </div>
-                          </div>
-                        </Link>
-                      )
-                    }
-
-                    // Modo Lista
+                {filteredLibrary.map((entry) => {
+                  const year = entry.title.releaseDate ? entry.title.releaseDate.substring(0, 4) : '—'
+                  
+                  if (viewMode === 'grid') {
                     return (
                       <Link 
                         key={entry.id}
                         href={`/title/${entry.title.mediaType}/${entry.title.id}`}
-                        className="group flex items-center gap-4 bg-gray-800 p-3 rounded-lg hover:bg-gray-750 transition-colors border border-gray-700 hover:border-gray-600"
+                        className="group relative"
                       >
-                        <div className="w-12 h-16 flex-shrink-0 rounded bg-gray-700 overflow-hidden">
+                        <div className="relative aspect-[2/3] rounded-lg overflow-hidden bg-gray-800 shadow-lg">
                           {entry.title.posterUrl ? (
-                            <img src={entry.title.posterUrl} alt={entry.title.name} className="w-full h-full object-cover" />
+                            <img 
+                              src={entry.title.posterUrl}
+                              alt={entry.title.name}
+                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                            />
                           ) : (
-                            <div className="w-full h-full flex items-center justify-center text-gray-500 text-xs">N/A</div>
+                            <div className="w-full h-full flex items-center justify-center text-gray-600 text-sm p-4 text-center">
+                              Sin imagen
+                            </div>
                           )}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
-                            <h3 className="font-medium truncate group-hover:text-blue-400 transition-colors">
-                              {entry.title.name}
-                            </h3>
-                            {entry.seenTogether && <span className="text-sm" title="Visto juntos">💑</span>}
-                            <span className="text-xs text-gray-500 flex-shrink-0">
-                              {entry.title.mediaType === 'movie' ? '🎬 Película' : '📺 Serie'}
-                            </span>
+                          
+                          {/* Badge Visto juntos */}
+                          {entry.seenTogether && (
+                            <div className="absolute top-2 left-2 bg-pink-600 text-white text-xs px-2 py-1 rounded-full font-bold shadow-md flex items-center gap-1">
+                              💑
+                            </div>
+                          )}
+                          
+                          {/* Badge Tipo */}
+                          <div className="absolute top-2 right-2 bg-black/70 text-white text-xs px-2 py-1 rounded">
+                            {entry.title.mediaType === 'movie' ? '🎬' : '📺'}
                           </div>
-                          <div className="flex items-center gap-3 text-xs text-gray-400 mt-1">
+                        </div>
+                        <div className="mt-2">
+                          <h3 className="font-medium text-sm line-clamp-2 group-hover:text-blue-400 transition-colors">
+                            {entry.title.name}
+                          </h3>
+                          <div className="flex items-center gap-2 text-xs text-gray-400 mt-1">
                             <span>{year}</span>
-                            {entry.title.voteAverage && <span>⭐ {entry.title.voteAverage.toFixed(1)}</span>}
-                            <span className="px-2 py-0.5 rounded bg-gray-700 text-gray-300">
-                              {STATUS_FILTERS.find(f => f.value === entry.status)?.label || entry.status}
-                            </span>
+                            {entry.title.voteAverage && (
+                              <>
+                                <span>•</span>
+                                <span>⭐ {entry.title.voteAverage.toFixed(1)}</span>
+                              </>
+                            )}
                           </div>
                         </div>
-                        <svg className="w-5 h-5 text-gray-500 group-hover:text-white transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                        </svg>
                       </Link>
                     )
-                  })}
+                  }
+
+                  // Modo Lista
+                  return (
+                    <Link 
+                      key={entry.id}
+                      href={`/title/${entry.title.mediaType}/${entry.title.id}`}
+                      className="group flex items-center gap-4 bg-gray-800 p-3 rounded-lg hover:bg-gray-750 transition-colors border border-gray-700 hover:border-gray-600"
+                    >
+                      <div className="w-12 h-16 flex-shrink-0 rounded bg-gray-700 overflow-hidden">
+                        {entry.title.posterUrl ? (
+                          <img src={entry.title.posterUrl} alt={entry.title.name} className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-gray-500 text-xs">N/A</div>
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <h3 className="font-medium truncate group-hover:text-blue-400 transition-colors">
+                            {entry.title.name}
+                          </h3>
+                          {entry.seenTogether && <span className="text-sm" title="Visto juntos">💑</span>}
+                          <span className="text-xs text-gray-500 flex-shrink-0">
+                            {entry.title.mediaType === 'movie' ? '🎬 Película' : '📺 Serie'}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-3 text-xs text-gray-400 mt-1">
+                          <span>{year}</span>
+                          {entry.title.voteAverage && <span>⭐ {entry.title.voteAverage.toFixed(1)}</span>}
+                          <span className="px-2 py-0.5 rounded bg-gray-700 text-gray-300">
+                            {STATUS_FILTERS.find(f => f.value === entry.status)?.label || entry.status}
+                          </span>
+                        </div>
+                      </div>
+                      <svg className="w-5 h-5 text-gray-500 group-hover:text-white transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      </svg>
+                    </Link>
+                  )
+                })}
               </div>
             )}
           </>
