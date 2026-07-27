@@ -1,0 +1,69 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Estados posibles para una película/serie en la biblioteca
+enum WatchStatus {
+  watching        // 🎬 Viendo
+  completed       // ✅ Completado
+  want_to_watch   // 💭 Quiero ver
+  paused          // ⏸️ En pausa
+  abandoned       // ❌ Abandonado
+  not_started     // 🆕 No empezado
+}
+
+// Perfil de usuario (Guille o Nuria)
+model Profile {
+  id          String       @id @default(cuid())
+  name        String       @unique  // "Guille" o "Nuria"
+  avatarColor String       // Color del avatar (ej: "#3b82f6")
+  countryCode String       @default("ES") // Para proveedores de streaming
+  createdAt   DateTime     @default(now())
+  
+  watchEntries WatchEntry[]
+}
+
+// Catálogo de títulos (películas y series de TMDB)
+model Title {
+  id          Int          @id // Usaremos el ID de TMDB como ID principal
+  mediaType   String       // "movie" o "tv"
+  name        String
+  posterUrl   String?
+  backdropUrl String?
+  overview    String?      @db.Text
+  releaseDate String?      // Formato "YYYY-MM-DD"
+  voteAverage Float?
+  genres      String[]     // Array de géneros (ej: ["Acción", "Drama"])
+  createdAt   DateTime     @default(now())
+  
+  watchEntries WatchEntry[]
+}
+
+// Registro de visualización (relación Perfil <-> Título)
+model WatchEntry {
+  id              String      @id @default(cuid())
+  profileId       String
+  titleId         Int
+  
+  status          WatchStatus @default(not_started)
+  notes           String?     @db.Text
+  seenTogether    Boolean     @default(false) // 💑 Marcador de contenido compartido
+  
+  platforms       String[]    // Ej: ["Netflix", "HBO Max"]
+  currentSeason   Int?        // Solo para series
+  currentEpisode  Int?        // Solo para series
+  
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  profile         Profile     @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  title           Title       @relation(fields: [titleId], references: [id], onDelete: Cascade)
+
+  // Un perfil no puede tener el mismo título dos veces
+  @@unique([profileId, titleId])
+}
