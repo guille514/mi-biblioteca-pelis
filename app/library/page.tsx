@@ -44,6 +44,7 @@ const STATUS_FILTERS = [
   { value: 'want_to_watch', label: '💭 Quiero ver' },
   { value: 'paused', label: '⏸️ En pausa' },
   { value: 'abandoned', label: '❌ Abandonado' },
+  { value: 'seen_together', label: '💑 Viendo juntos' }, // ✅ NUEVO
 ]
 
 export default function LibraryPage() {
@@ -91,10 +92,13 @@ export default function LibraryPage() {
       })
   }, [router])
 
-  // Filtrar biblioteca por estado
+    // Filtrar biblioteca por estado o por "Visto juntos"
   useEffect(() => {
     if (activeFilter === 'all') {
       setFilteredLibrary(library)
+    } else if (activeFilter === 'seen_together') {
+      // ✅ Filtrar solo los que tienen el flag seenTogether en true
+      setFilteredLibrary(library.filter(entry => entry.seenTogether === true))
     } else {
       setFilteredLibrary(library.filter(entry => entry.status === activeFilter))
     }
