@@ -170,6 +170,12 @@ export default function LibraryPage() {
               <span className="text-sm font-medium hidden sm:inline">{profile.name}</span>
             </div>
             <button
+  onClick={() => router.push('/import')}
+  className="text-sm text-gray-400 hover:text-white transition-colors"
+>
+  📥 Importar TV Time
+</button>
+            <button
               onClick={handleLogout}
               className="text-sm text-gray-400 hover:text-white transition-colors"
             >
