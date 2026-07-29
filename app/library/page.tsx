@@ -17,7 +17,7 @@ interface WatchEntry {
   id: string
   status: string
   seenTogether: boolean
-  rating: number | null  // ✅ AÑADIR ESTO
+  rating: number | null
   title: Title
 }
 
@@ -57,7 +57,6 @@ export default function LibraryPage() {
   const [showOnlyTogether, setShowOnlyTogether] = useState(false)
   const [typeFilter, setTypeFilter] = useState<'all' | 'movie' | 'tv'>('all')
 
-  // Dos buscadores separados
   const [tmdbQuery, setTmdbQuery] = useState('')
   const [tmdbResults, setTmdbResults] = useState<SearchResult[]>([])
   const [searchingTmdb, setSearchingTmdb] = useState(false)
@@ -87,6 +86,18 @@ export default function LibraryPage() {
   useEffect(() => { sessionStorage.setItem('lib_libraryFilter', libraryFilter) }, [libraryFilter])
   useEffect(() => { sessionStorage.setItem('lib_viewMode', viewMode) }, [viewMode])
 
+  // ✅ RESTAURAR posición del scroll al terminar de cargar (Solución robusta)
+  useEffect(() => {
+    if (!loading && library.length > 0) {
+      const savedScroll = sessionStorage.getItem('lib_scrollPosition')
+      if (savedScroll) {
+        requestAnimationFrame(() => {
+          window.scrollTo(0, parseInt(savedScroll, 10))
+        })
+      }
+    }
+  }, [loading, library.length])
+
   useEffect(() => {
     const profileId = localStorage.getItem('currentProfileId')
     if (!profileId) {
@@ -94,7 +105,6 @@ export default function LibraryPage() {
       return
     }
 
-    // Cargar perfil
     fetch('/api/profiles')
       .then(res => res.json())
       .then(profiles => {
@@ -102,7 +112,6 @@ export default function LibraryPage() {
         if (current) setProfile(current)
       })
 
-    // Cargar biblioteca del perfil
     fetch(`/api/library/profile/${profileId}`)
       .then(res => res.json())
       .then((entries: WatchEntry[]) => {
@@ -116,26 +125,21 @@ export default function LibraryPage() {
       })
   }, [router])
 
-  // Filtrar biblioteca combinando: Tipo + Estado + Visto Juntos + Búsqueda
   useEffect(() => {
     let result = library
 
-    // 1. Filtrar por tipo (Película / Serie)
     if (typeFilter !== 'all') {
       result = result.filter(entry => entry.title.mediaType === typeFilter)
     }
 
-    // 2. Filtrar por estado
     if (activeFilter !== 'all') {
       result = result.filter(entry => entry.status === activeFilter)
     }
 
-    // 3. Filtrar por "Visto juntos"
     if (showOnlyTogether) {
       result = result.filter(entry => entry.seenTogether === true)
     }
 
-    // 4. Filtrar por texto
     if (libraryFilter.trim()) {
       result = result.filter(entry => 
         entry.title.name.toLowerCase().includes(libraryFilter.toLowerCase())
@@ -145,7 +149,6 @@ export default function LibraryPage() {
     setFilteredLibrary(result)
   }, [activeFilter, showOnlyTogether, libraryFilter, typeFilter, library])
 
-  // Buscar en TMDB con debounce
   useEffect(() => {
     if (!tmdbQuery.trim()) {
       setTmdbResults([])
@@ -173,7 +176,6 @@ export default function LibraryPage() {
     router.push('/')
   }
 
-  // ✅ FUNCIÓN PARA ELIMINAR TÍTULO
   const handleDelete = async (entryId: string) => {
     if (!confirm('¿Estás seguro de que quieres eliminar este título de tu biblioteca?')) return
     
@@ -183,7 +185,6 @@ export default function LibraryPage() {
       })
       
       if (response.ok) {
-        // Actualizar el estado local eliminando el item
         setLibrary((prev) => prev.filter((item) => item.id !== entryId))
         setFilteredLibrary((prev) => prev.filter((item) => item.id !== entryId))
       } else {
@@ -205,7 +206,6 @@ export default function LibraryPage() {
 
   return (
     <div className="min-h-screen bg-gray-900 text-white">
-      {/* Header */}
       <header className="bg-gray-800 border-b border-gray-700 sticky top-0 z-20">
         <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
           <h1 className="text-xl font-bold">🎬 Mi Biblioteca</h1>
@@ -222,11 +222,11 @@ export default function LibraryPage() {
             </div>
 
             <button
-  onClick={() => router.push('/calendar')}
-  className="text-sm text-gray-400 hover:text-white transition-colors"
->
-  📅 Calendario
-</button>
+              onClick={() => router.push('/calendar')}
+              className="text-sm text-gray-400 hover:text-white transition-colors"
+            >
+              📅 Calendario
+            </button>
             
             <button
               onClick={handleLogout}
@@ -239,7 +239,6 @@ export default function LibraryPage() {
       </header>
 
       <main className="max-w-7xl mx-auto px-4 py-6">
-        {/* Buscador de TMDB (para añadir nuevos títulos) */}
         <div className="mb-8">
           <h2 className="text-lg font-bold mb-3 text-gray-300">🔍 Buscar y añadir nuevos títulos</h2>
           <div className="relative max-w-2xl">
@@ -255,7 +254,6 @@ export default function LibraryPage() {
             </svg>
           </div>
 
-          {/* Resultados de TMDB */}
           {tmdbQuery && (
             <div className="mt-6">
               <h3 className="text-xl font-bold mb-4">
@@ -312,19 +310,16 @@ export default function LibraryPage() {
           )}
         </div>
 
-        {/* Separador visual */}
         {library.length > 0 && (
           <div className="border-t border-gray-700 my-8"></div>
         )}
 
-        {/* Sección de tu biblioteca */}
         {library.length > 0 && (
           <>
             <div className="flex flex-col md:flex-row gap-4 mb-6 items-start md:items-center justify-between">
               <h2 className="text-2xl font-bold">📚 Tu biblioteca</h2>
               
               <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
-                {/* Buscador interno de la biblioteca */}
                 <div className="relative flex-1 sm:flex-initial">
                   <input
                     type="text"
@@ -338,7 +333,6 @@ export default function LibraryPage() {
                   </svg>
                 </div>
 
-                {/* Toggle Vista */}
                 <div className="flex bg-gray-800 rounded-lg p-1 border border-gray-700">
                   <button
                     onClick={() => setViewMode('grid')}
@@ -362,13 +356,8 @@ export default function LibraryPage() {
               </div>
             </div>
 
-            {/* Controles de filtro */}
             <div className="flex flex-col gap-4 mb-6">
-              
-              {/* Fila 1: Interruptor Visto Juntos + Filtro de Tipo */}
               <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
-                
-                {/* Interruptor Visto Juntos */}
                 <label className="flex items-center gap-2 cursor-pointer select-none bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 hover:bg-gray-750 transition-colors w-fit">
                   <input
                     type="checkbox"
@@ -381,10 +370,8 @@ export default function LibraryPage() {
                   </span>
                 </label>
 
-                {/* Separador */}
                 <div className="hidden sm:block w-px bg-gray-700 h-8"></div>
 
-                {/* Filtro de Tipo: Películas / Series */}
                 <div className="flex gap-2">
                   <button
                     onClick={() => setTypeFilter('all')}
@@ -419,7 +406,6 @@ export default function LibraryPage() {
                 </div>
               </div>
 
-              {/* Fila 2: Filtros de estado */}
               <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
                 {STATUS_FILTERS.map(filter => (
                   <button
@@ -437,7 +423,6 @@ export default function LibraryPage() {
               </div>
             </div>
 
-            {/* Contenido de la biblioteca */}
             {filteredLibrary.length === 0 ? (
               <div className="text-center py-12 bg-gray-800/50 rounded-xl border border-gray-700 border-dashed">
                 <p className="text-4xl mb-3">🍿</p>
@@ -461,6 +446,7 @@ export default function LibraryPage() {
                       <Link 
                         key={entry.id}
                         href={`/title/${entry.title.mediaType}/${entry.title.id}`}
+                        onClick={() => sessionStorage.setItem('lib_scrollPosition', window.scrollY.toString())} // ✅ GUARDAR SCROLL
                         className="group relative"
                       >
                         <div className="relative aspect-[2/3] rounded-lg overflow-hidden bg-gray-800 shadow-lg">
@@ -476,11 +462,10 @@ export default function LibraryPage() {
                             </div>
                           )}
                           
-                          {/* Badges y Botón Eliminar */}
                           <div className="absolute top-2 right-2 flex flex-col items-end gap-2">
                             <button
                               onClick={(e) => {
-                                e.preventDefault() // Evitar que el Link se active
+                                e.preventDefault()
                                 e.stopPropagation()
                                 handleDelete(entry.id)
                               }}
@@ -496,7 +481,6 @@ export default function LibraryPage() {
                             </div>
                           </div>
 
-                          {/* Badge Visto juntos */}
                           {entry.seenTogether && (
                             <div className="absolute top-2 left-2 bg-pink-600 text-white text-xs px-2 py-1 rounded-full font-bold shadow-md flex items-center gap-1">
                               💑
@@ -504,34 +488,34 @@ export default function LibraryPage() {
                           )}
                         </div>
                         <div className="mt-2">
-  <h3 className="font-medium text-sm line-clamp-2 group-hover:text-blue-400 transition-colors">
-    {entry.title.name}
-  </h3>
-  <div className="flex items-center gap-2 text-xs text-gray-400 mt-1 flex-wrap">
-    <span>{year}</span>
-    {entry.title.voteAverage && (
-      <>
-        <span>•</span>
-        <span>⭐ {entry.title.voteAverage.toFixed(1)}</span>
-      </>
-    )}
-    {entry.rating && (
-      <>
-        <span>•</span>
-        <span className="text-yellow-400 font-medium">🎯 {entry.rating}/10</span>
-      </>
-    )}
-  </div>
-</div>
+                          <h3 className="font-medium text-sm line-clamp-2 group-hover:text-blue-400 transition-colors">
+                            {entry.title.name}
+                          </h3>
+                          <div className="flex items-center gap-2 text-xs text-gray-400 mt-1 flex-wrap">
+                            <span>{year}</span>
+                            {entry.title.voteAverage && (
+                              <>
+                                <span>•</span>
+                                <span>⭐ {entry.title.voteAverage.toFixed(1)}</span>
+                              </>
+                            )}
+                            {entry.rating && (
+                              <>
+                                <span>•</span>
+                                <span className="text-yellow-400 font-medium">🎯 {entry.rating}/10</span>
+                              </>
+                            )}
+                          </div>
+                        </div>
                       </Link>
                     )
                   }
 
-                  // Modo Lista
                   return (
                     <Link 
                       key={entry.id}
                       href={`/title/${entry.title.mediaType}/${entry.title.id}`}
+                      onClick={() => sessionStorage.setItem('lib_scrollPosition', window.scrollY.toString())} // ✅ GUARDAR SCROLL
                       className="group flex items-center gap-4 bg-gray-800 p-3 rounded-lg hover:bg-gray-750 transition-colors border border-gray-700 hover:border-gray-600"
                     >
                       <div className="w-12 h-16 flex-shrink-0 rounded bg-gray-700 overflow-hidden">
@@ -552,16 +536,15 @@ export default function LibraryPage() {
                           </span>
                         </div>
                         <div className="flex items-center gap-3 text-xs text-gray-400 mt-1 flex-wrap">
-  <span>{year}</span>
-  {entry.title.voteAverage && <span>⭐ {entry.title.voteAverage.toFixed(1)}</span>}
-  {entry.rating && <span className="text-yellow-400 font-medium">🎯 {entry.rating}/10</span>}
-  <span className="px-2 py-0.5 rounded bg-gray-700 text-gray-300">
-    {STATUS_FILTERS.find(f => f.value === entry.status)?.label || entry.status}
-  </span>
-</div>
+                          <span>{year}</span>
+                          {entry.title.voteAverage && <span>⭐ {entry.title.voteAverage.toFixed(1)}</span>}
+                          {entry.rating && <span className="text-yellow-400 font-medium">🎯 {entry.rating}/10</span>}
+                          <span className="px-2 py-0.5 rounded bg-gray-700 text-gray-300">
+                            {STATUS_FILTERS.find(f => f.value === entry.status)?.label || entry.status}
+                          </span>
+                        </div>
                       </div>
                       
-                      {/* Botón Eliminar en Modo Lista */}
                       <button
                         onClick={(e) => {
                           e.preventDefault()

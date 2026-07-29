@@ -270,7 +270,7 @@ export default function TitleDetailsPage() {
   return (
     <div className="min-h-screen bg-gray-900 text-white pb-12">
       
-      {/* ✅ Botón Volver Flotante (Siempre visible, no empuja el contenido) */}
+      {/* Botón Volver Flotante */}
       <button
         onClick={() => window.history.back()}
         className="absolute top-4 left-4 z-20 bg-black/50 hover:bg-black/70 text-white px-3 py-2 rounded-full backdrop-blur-sm transition-colors flex items-center gap-2 text-sm font-medium"
@@ -298,22 +298,24 @@ export default function TitleDetailsPage() {
         <div className="absolute inset-0 bg-gradient-to-t from-gray-900 via-gray-900/60 to-transparent" />
       </div>
 
-      {/* ✅ Contenido Principal Superpuesto (-mt-24 en móvil, -mt-32 en escritorio) */}
+      {/* Contenido Principal Superpuesto */}
       <div className="relative z-10 -mt-24 md:-mt-32 px-4 max-w-6xl mx-auto">
         <div className="flex flex-col md:flex-row gap-6 md:gap-8">
           
-{/* Poster */}
-{title.poster_path ? (
-  <img
-    src={`https://image.tmdb.org/t/p/w500${title.poster_path}`}
-    alt={titleName || 'Poster'}
-    className="w-40 md:w-56 aspect-[2/3] object-cover rounded-lg shadow-2xl border-2 border-gray-800 flex-shrink-0 mx-auto md:mx-0"
-  />
-) : (
-  <div className="w-40 md:w-56 aspect-[2/3] bg-gray-800 rounded-lg shadow-2xl border-2 border-gray-700 flex items-center justify-center flex-shrink-0 mx-auto md:mx-0">
-    <span className="text-gray-500 text-4xl">🎬</span>
-  </div>
-)}
+          {/* ✅ Poster (Contenedor que fija el tamaño para evitar estiramientos) */}
+          <div className="w-40 md:w-56 flex-shrink-0 mx-auto md:mx-0">
+            {title.poster_path ? (
+              <img
+                src={`https://image.tmdb.org/t/p/w500${title.poster_path}`}
+                alt={titleName || 'Poster'}
+                className="w-full h-auto rounded-lg shadow-2xl border-2 border-gray-800 block"
+              />
+            ) : (
+              <div className="w-full aspect-[2/3] bg-gray-800 rounded-lg shadow-2xl border-2 border-gray-700 flex items-center justify-center">
+                <span className="text-gray-500 text-4xl">🎬</span>
+              </div>
+            )}
+          </div>
 
           {/* Info y Acciones */}
           <div className="flex-1 text-center md:text-left pt-2 md:pt-12">
@@ -479,7 +481,7 @@ export default function TitleDetailsPage() {
           </div>
         </div>
 
-        {/* Sinopsis, Trailer y Proveedores (Debajo del bloque principal) */}
+        {/* Sinopsis, Trailer y Proveedores */}
         <div className="mt-8 space-y-8">
           {title.overview && (
             <div>
