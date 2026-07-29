@@ -267,6 +267,11 @@ export default function TitleDetailsPage() {
   const releaseDate = title.mediaType === 'movie' ? title.release_date : title.first_air_date
   const year = releaseDate ? releaseDate.substring(0, 4) : '—'
 
+  // ✅ Separar proveedores por tipo
+  const streamingProviders = title.providers?.filter(p => p.type === 'streaming') || []
+  const rentProviders = title.providers?.filter(p => p.type === 'rent') || []
+  const buyProviders = title.providers?.filter(p => p.type === 'buy') || []
+
   return (
     <div className="min-h-screen bg-gray-900 text-white pb-12">
       
@@ -291,7 +296,7 @@ export default function TitleDetailsPage() {
           />
         ) : (
           <div className="w-full h-full bg-gray-800 flex items-center justify-center">
-            <span className="text-gray-600 text-4xl">🎬</span>
+            <span className="text-gray-600 text-4xl"></span>
           </div>
         )}
         {/* Degradado para que el texto de encima sea legible */}
@@ -302,7 +307,7 @@ export default function TitleDetailsPage() {
       <div className="relative z-10 -mt-24 md:-mt-32 px-4 max-w-6xl mx-auto">
         <div className="flex flex-col md:flex-row gap-6 md:gap-8">
           
-          {/* ✅ Poster (Contenedor que fija el tamaño para evitar estiramientos) */}
+          {/* Poster (Contenedor que fija el tamaño para evitar estiramientos) */}
           <div className="w-40 md:w-56 flex-shrink-0 mx-auto md:mx-0">
             {title.poster_path ? (
               <img
@@ -312,7 +317,7 @@ export default function TitleDetailsPage() {
               />
             ) : (
               <div className="w-full aspect-[2/3] bg-gray-800 rounded-lg shadow-2xl border-2 border-gray-700 flex items-center justify-center">
-                <span className="text-gray-500 text-4xl">🎬</span>
+                <span className="text-gray-500 text-4xl"></span>
               </div>
             )}
           </div>
@@ -325,7 +330,7 @@ export default function TitleDetailsPage() {
               <span>•</span>
               <span>⭐ {title.vote_average ? title.vote_average.toFixed(1) : '—'}</span>
               <span>•</span>
-              <span>{title.mediaType === 'movie' ? '🎬 Película' : '📺 Serie'}</span>
+              <span>{title.mediaType === 'movie' ? ' Película' : '📺 Serie'}</span>
             </div>
 
             {/* Sección de Biblioteca */}
@@ -384,7 +389,7 @@ export default function TitleDetailsPage() {
                       <option value="">Sin valorar</option>
                       {[10, 9, 8, 7, 6, 5, 4, 3, 2, 1].map((num) => (
                         <option key={num} value={num}>
-                          {num} / 10 {num >= 9 ? '🔥' : num >= 7 ? '👍' : num <= 4 ? '👎' : '😐'}
+                          {num} / 10 {num >= 9 ? '🔥' : num >= 7 ? '👍' : num <= 4 ? '👎' : ''}
                         </option>
                       ))}
                     </select>
@@ -507,8 +512,9 @@ export default function TitleDetailsPage() {
             </div>
           )}
 
+          {/* ✅ Proveedores separados por tipo */}
           <div>
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
               <h2 className="text-xl font-bold">Disponible en</h2>
               <select
                 value={country}
@@ -522,29 +528,99 @@ export default function TitleDetailsPage() {
                 <option value="DE">🇩🇪 Alemania</option>
                 <option value="IT">🇮🇹 Italia</option>
                 <option value="PT">🇵🇹 Portugal</option>
-                <option value="MX">🇲🇽 México</option>
+                <option value="MX">🇽 México</option>
                 <option value="AR">🇦🇷 Argentina</option>
                 <option value="JP">🇯🇵 Japón</option>
               </select>
             </div>
 
-            {title.providers && title.providers.length > 0 ? (
-              <div className="flex flex-wrap gap-3">
-                {title.providers.map((provider) => (
-                  <div key={`${provider.provider_id}-${provider.type}`} className="flex flex-col items-center gap-1">
-                    <img
-                      src={`https://image.tmdb.org/t/p/original${provider.logo_path}`}
-                      alt={provider.provider_name}
-                      className="w-12 h-12 rounded-lg bg-white p-1"
-                      title={`${provider.provider_name} (${provider.type === 'streaming' ? 'Streaming' : provider.type === 'rent' ? 'Alquiler' : 'Compra'})`}
-                    />
-                    <span className="text-xs text-gray-400 text-center max-w-[80px] truncate">
-                      {provider.provider_name}
-                    </span>
-                  </div>
-                ))}
+            {/* Streaming */}
+            {streamingProviders.length > 0 && (
+              <div className="mb-6">
+                <h3 className="text-lg font-semibold text-green-400 mb-3 flex items-center gap-2">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  En Streaming (Incluido en suscripción)
+                </h3>
+                <div className="flex flex-wrap gap-3">
+                  {streamingProviders.map((provider) => (
+                    <div key={`${provider.provider_id}-streaming`} className="flex flex-col items-center gap-1">
+                      <img
+                        src={`https://image.tmdb.org/t/p/original${provider.logo_path}`}
+                        alt={provider.provider_name}
+                        className="w-12 h-12 rounded-lg bg-white p-1"
+                        title={`${provider.provider_name}`}
+                      />
+                      <span className="text-xs text-gray-400 text-center max-w-[80px] truncate">
+                        {provider.provider_name}
+                      </span>
+                    </div>
+                  ))}
+                </div>
               </div>
-            ) : (
+            )}
+
+            {/* Alquiler y Compra */}
+            {(rentProviders.length > 0 || buyProviders.length > 0) && (
+              <div>
+                <h3 className="text-lg font-semibold text-yellow-400 mb-3 flex items-center gap-2">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  Alquiler o Compra Digital
+                </h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {/* Alquiler */}
+                  {rentProviders.length > 0 && (
+                    <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-4">
+                      <h4 className="text-sm font-semibold text-gray-300 mb-3">📥 Alquiler</h4>
+                      <div className="flex flex-wrap gap-3">
+                        {rentProviders.map((provider) => (
+                          <div key={`${provider.provider_id}-rent`} className="flex flex-col items-center gap-1">
+                            <img
+                              src={`https://image.tmdb.org/t/p/original${provider.logo_path}`}
+                              alt={provider.provider_name}
+                              className="w-10 h-10 rounded-lg bg-white p-1"
+                              title={`Alquilar en ${provider.provider_name}`}
+                            />
+                            <span className="text-xs text-gray-400 text-center max-w-[80px] truncate">
+                              {provider.provider_name}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Compra */}
+                  {buyProviders.length > 0 && (
+                    <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-4">
+                      <h4 className="text-sm font-semibold text-gray-300 mb-3">💾 Compra (Descarga)</h4>
+                      <div className="flex flex-wrap gap-3">
+                        {buyProviders.map((provider) => (
+                          <div key={`${provider.provider_id}-buy`} className="flex flex-col items-center gap-1">
+                            <img
+                              src={`https://image.tmdb.org/t/p/original${provider.logo_path}`}
+                              alt={provider.provider_name}
+                              className="w-10 h-10 rounded-lg bg-white p-1"
+                              title={`Comprar en ${provider.provider_name}`}
+                            />
+                            <span className="text-xs text-gray-400 text-center max-w-[80px] truncate">
+                              {provider.provider_name}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Si no hay proveedores */}
+            {title.providers?.length === 0 && (
               <p className="text-gray-500 text-sm italic">
                 No hay información de proveedores disponible para {country.toUpperCase()}.
               </p>
