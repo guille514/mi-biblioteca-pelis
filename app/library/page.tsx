@@ -20,6 +20,8 @@ interface WatchEntry {
   rating: number | null
   createdAt: string
   updatedAt: string
+  currentSeason: number | null
+  currentEpisode: number | null
   title: Title
 }
 
@@ -55,7 +57,6 @@ export default function LibraryPage() {
   const [library, setLibrary] = useState<WatchEntry[]>([])
   const [filteredLibrary, setFilteredLibrary] = useState<WatchEntry[]>([])
   
-  // ✅ Todos los estados con lazy initializer desde sessionStorage (SIN useEffect de restauración)
   const [activeFilter, setActiveFilter] = useState(() => 
     (typeof window !== 'undefined' && sessionStorage.getItem('lib_activeFilter')) || 'all'
   )
@@ -82,22 +83,28 @@ export default function LibraryPage() {
   const [libraryFilter, setLibraryFilter] = useState(() => 
     (typeof window !== 'undefined' && sessionStorage.getItem('lib_libraryFilter')) || ''
   )
+  
+  // ✅ Estado colapsable con persistencia
+  const [isWatchingExpanded, setIsWatchingExpanded] = useState(() => 
+    typeof window !== 'undefined' && sessionStorage.getItem('lib_watchingExpanded') === 'true'
+  )
 
   const [tmdbQuery, setTmdbQuery] = useState('')
   const [tmdbResults, setTmdbResults] = useState<SearchResult[]>([])
   const [searchingTmdb, setSearchingTmdb] = useState(false)
   const [loading, setLoading] = useState(true)
   
-  // ✅ Bandera para restaurar scroll solo UNA VEZ
   const scrollRestored = useRef(false)
 
-  // ✅ GUARDAR estado en sessionStorage cada vez que cambia
+  const watchingList = library.filter(entry => entry.status === 'watching')
+
   useEffect(() => { sessionStorage.setItem('lib_activeFilter', activeFilter) }, [activeFilter])
   useEffect(() => { sessionStorage.setItem('lib_typeFilter', typeFilter) }, [typeFilter])
   useEffect(() => { sessionStorage.setItem('lib_showTogether', String(showOnlyTogether)) }, [showOnlyTogether])
   useEffect(() => { sessionStorage.setItem('lib_libraryFilter', libraryFilter) }, [libraryFilter])
   useEffect(() => { sessionStorage.setItem('lib_viewMode', viewMode) }, [viewMode])
   useEffect(() => { sessionStorage.setItem('lib_sortBy', sortBy) }, [sortBy])
+  useEffect(() => { sessionStorage.setItem('lib_watchingExpanded', String(isWatchingExpanded)) }, [isWatchingExpanded])
 
   useEffect(() => {
     const profileId = localStorage.getItem('currentProfileId')
@@ -125,7 +132,6 @@ export default function LibraryPage() {
       })
   }, [router])
 
-  // ✅ Filtrar Y ORDENAR biblioteca
   useEffect(() => {
     if (library.length === 0) {
       setFilteredLibrary([])
@@ -184,13 +190,10 @@ export default function LibraryPage() {
     setFilteredLibrary(result)
   }, [activeFilter, showOnlyTogether, libraryFilter, typeFilter, library, sortBy])
 
-  // ✅ Restaurar scroll SOLO UNA VEZ cuando la biblioteca está lista
   useEffect(() => {
-    // Solo actuamos si: no estamos cargando, hay elementos, y aún no hemos restaurado
     if (!loading && filteredLibrary.length > 0 && !scrollRestored.current) {
       const savedScroll = sessionStorage.getItem('lib_scrollPosition')
       if (savedScroll) {
-        // setTimeout más largo para asegurar que el DOM está 100% pintado
         setTimeout(() => {
           window.scrollTo({ top: parseInt(savedScroll, 10), behavior: 'instant' })
           scrollRestored.current = true
@@ -359,7 +362,85 @@ export default function LibraryPage() {
           )}
         </div>
 
-        {library.length > 0 && <div className="border-t border-gray-700 my-8"></div>}
+        {/* ✅ SECCIÓN "CONTINUAR VIENDO" COLAPSABLE */}
+        {watchingList.length > 0 && (
+          <div className="mb-6">
+            {/* Barra compacta (siempre visible) */}
+            <button
+              onClick={() => setIsWatchingExpanded(!isWatchingExpanded)}
+              className="w-full flex items-center justify-between px-4 py-3 bg-gradient-to-r from-gray-800 to-gray-800/50 hover:from-gray-750 hover:to-gray-750/50 border border-gray-700 rounded-lg transition-all group"
+            >
+              <div className="flex items-center gap-3">
+                <span className="text-xl">▶️</span>
+                <div className="text-left">
+                  <h3 className="font-semibold text-white">Continuar viendo</h3>
+                  <p className="text-xs text-gray-400">
+                    {watchingList.length} {watchingList.length === 1 ? 'título en progreso' : 'títulos en progreso'}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <span className="bg-blue-600 text-white text-xs font-bold px-2.5 py-1 rounded-full">
+                  {watchingList.length}
+                </span>
+                <svg 
+                  className={`w-5 h-5 text-gray-400 transition-transform duration-300 ${
+                    isWatchingExpanded ? 'rotate-180' : ''
+                  }`} 
+                  fill="none" 
+                  stroke="currentColor" 
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </div>
+            </button>
+
+            {/* Contenido desplegable (con animación) */}
+            <div 
+              className={`overflow-hidden transition-all duration-300 ease-in-out ${
+                isWatchingExpanded ? 'max-h-[500px] opacity-100 mt-4' : 'max-h-0 opacity-0 mt-0'
+              }`}
+            >
+              <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide">
+                {watchingList.map((entry) => (
+                  <Link
+                    key={entry.id}
+                    href={`/title/${entry.title.mediaType}/${entry.title.id}`}
+                    onClick={() => sessionStorage.setItem('lib_scrollPosition', window.scrollY.toString())}
+                    className="group flex-shrink-0 w-32 sm:w-36"
+                  >
+                    <div className="relative aspect-[2/3] rounded-lg overflow-hidden bg-gray-800 shadow-md">
+                      {entry.title.posterUrl ? (
+                        <img
+                          src={entry.title.posterUrl}
+                          alt={entry.title.name}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-gray-600 text-xs p-2 text-center">
+                          Sin imagen
+                        </div>
+                      )}
+                      {entry.title.mediaType === 'tv' && entry.currentSeason && (
+                        <div className="absolute bottom-2 left-2 bg-blue-600/90 text-white text-xs px-2 py-0.5 rounded font-bold">
+                          S{entry.currentSeason}
+                          {entry.currentEpisode ? ` E${entry.currentEpisode}` : ''}
+                        </div>
+                      )}
+                      <div className="absolute top-2 right-2 bg-black/70 text-white text-xs px-1.5 py-0.5 rounded">
+                        {entry.title.mediaType === 'movie' ? '🎬' : '📺'}
+                      </div>
+                    </div>
+                    <h3 className="mt-2 text-sm font-medium line-clamp-2 group-hover:text-blue-400 transition-colors">
+                      {entry.title.name}
+                    </h3>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
 
         {library.length > 0 && (
           <>

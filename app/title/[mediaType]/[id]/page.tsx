@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
+import Link from 'next/link'
 
 interface TitleDetails {
   id: number
@@ -40,6 +41,18 @@ interface WatchEntry {
   rating: number | null
 }
 
+// ✅ NUEVA INTERFAZ para recomendaciones
+interface SimilarTitle {
+  id: number
+  media_type: string
+  title?: string
+  name?: string
+  poster_path: string | null
+  vote_average: number
+  release_date?: string
+  first_air_date?: string
+}
+
 const STATUS_OPTIONS = [
   { value: 'want_to_watch', label: '💭 Quiero ver' },
   { value: 'watching', label: '🎬 Viendo' },
@@ -60,6 +73,9 @@ export default function TitleDetailsPage() {
   const [checking, setChecking] = useState(true)
   const [country, setCountry] = useState('ES')
   const [notesTimeout, setNotesTimeout] = useState<NodeJS.Timeout | null>(null)
+  
+  // ✅ NUEVO: Estado para recomendaciones
+  const [similarTitles, setSimilarTitles] = useState<SimilarTitle[]>([])
 
   useEffect(() => {
     const profileId = localStorage.getItem('currentProfileId')
@@ -107,6 +123,25 @@ export default function TitleDetailsPage() {
       loadTitle(defaultCountry)
       setChecking(false)
     }
+  }, [mediaType, id])
+
+  // ✅ NUEVO: Cargar títulos similares cuando cambie el ID
+  useEffect(() => {
+    if (!id || !mediaType) return
+    
+    fetch(`/api/title/${mediaType}/${id}/similar`)
+      .then(res => res.json())
+      .then(data => {
+        if (Array.isArray(data)) {
+          setSimilarTitles(data.slice(0, 10)) // Máximo 10 recomendaciones
+        } else {
+          setSimilarTitles([])
+        }
+      })
+      .catch(err => {
+        console.error('Error al cargar similares:', err)
+        setSimilarTitles([])
+      })
   }, [mediaType, id])
 
   const handleAddToLibrary = async () => {
@@ -267,7 +302,7 @@ export default function TitleDetailsPage() {
   const releaseDate = title.mediaType === 'movie' ? title.release_date : title.first_air_date
   const year = releaseDate ? releaseDate.substring(0, 4) : '—'
 
-  // ✅ Separar proveedores por tipo
+  // Separar proveedores por tipo
   const streamingProviders = title.providers?.filter(p => p.type === 'streaming') || []
   const rentProviders = title.providers?.filter(p => p.type === 'rent') || []
   const buyProviders = title.providers?.filter(p => p.type === 'buy') || []
@@ -299,7 +334,6 @@ export default function TitleDetailsPage() {
             <span className="text-gray-600 text-4xl"></span>
           </div>
         )}
-        {/* Degradado para que el texto de encima sea legible */}
         <div className="absolute inset-0 bg-gradient-to-t from-gray-900 via-gray-900/60 to-transparent" />
       </div>
 
@@ -307,7 +341,7 @@ export default function TitleDetailsPage() {
       <div className="relative z-10 -mt-24 md:-mt-32 px-4 max-w-6xl mx-auto">
         <div className="flex flex-col md:flex-row gap-6 md:gap-8">
           
-          {/* Poster (Contenedor que fija el tamaño para evitar estiramientos) */}
+          {/* Poster */}
           <div className="w-40 md:w-56 flex-shrink-0 mx-auto md:mx-0">
             {title.poster_path ? (
               <img
@@ -330,7 +364,7 @@ export default function TitleDetailsPage() {
               <span>•</span>
               <span>⭐ {title.vote_average ? title.vote_average.toFixed(1) : '—'}</span>
               <span>•</span>
-              <span>{title.mediaType === 'movie' ? ' Película' : '📺 Serie'}</span>
+              <span>{title.mediaType === 'movie' ? '🎬 Película' : '📺 Serie'}</span>
             </div>
 
             {/* Sección de Biblioteca */}
@@ -512,7 +546,7 @@ export default function TitleDetailsPage() {
             </div>
           )}
 
-          {/* ✅ Proveedores separados por tipo */}
+          {/* Proveedores separados por tipo */}
           <div>
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
               <h2 className="text-xl font-bold">Disponible en</h2>
@@ -528,7 +562,7 @@ export default function TitleDetailsPage() {
                 <option value="DE">🇩🇪 Alemania</option>
                 <option value="IT">🇮🇹 Italia</option>
                 <option value="PT">🇵🇹 Portugal</option>
-                <option value="MX">🇽 México</option>
+                <option value="MX">🇲🇽 México</option>
                 <option value="AR">🇦🇷 Argentina</option>
                 <option value="JP">🇯🇵 Japón</option>
               </select>
@@ -619,13 +653,68 @@ export default function TitleDetailsPage() {
               </div>
             )}
 
-            {/* Si no hay proveedores */}
             {title.providers?.length === 0 && (
               <p className="text-gray-500 text-sm italic">
                 No hay información de proveedores disponible para {country.toUpperCase()}.
               </p>
             )}
           </div>
+
+          {/* ✅ NUEVO: RECOMENDACIONES "SI TE GUSTÓ ESTO..." */}
+          {similarTitles.length > 0 && (
+            <div>
+              <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+                🎯 Si te gustó esto, quizá te interese...
+              </h2>
+              <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide">
+                {similarTitles.map((similar) => {
+                  const similarTitle = similar.media_type === 'movie' ? similar.title : similar.name
+                  const similarYear = similar.release_date 
+                    ? similar.release_date.substring(0, 4) 
+                    : similar.first_air_date 
+                      ? similar.first_air_date.substring(0, 4) 
+                      : '—'
+                  
+                  return (
+                    <Link
+                      key={`${similar.media_type}-${similar.id}`}
+                      href={`/title/${similar.media_type}/${similar.id}`}
+                      className="group flex-shrink-0 w-32 sm:w-36"
+                    >
+                      <div className="relative aspect-[2/3] rounded-lg overflow-hidden bg-gray-800 shadow-md">
+                        {similar.poster_path ? (
+                          <img
+                            src={`https://image.tmdb.org/t/p/w500${similar.poster_path}`}
+                            alt={similarTitle || 'Sin título'}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-gray-600 text-xs p-2 text-center">
+                            Sin imagen
+                          </div>
+                        )}
+                        <div className="absolute top-2 right-2 bg-black/70 text-white text-xs px-1.5 py-0.5 rounded">
+                          {similar.media_type === 'movie' ? '🎬' : '📺'}
+                        </div>
+                      </div>
+                      <h3 className="mt-2 text-sm font-medium line-clamp-2 group-hover:text-blue-400 transition-colors">
+                        {similarTitle}
+                      </h3>
+                      <div className="flex items-center gap-2 text-xs text-gray-400 mt-1">
+                        <span>{similarYear}</span>
+                        {similar.vote_average > 0 && (
+                          <>
+                            <span>•</span>
+                            <span>⭐ {similar.vote_average.toFixed(1)}</span>
+                          </>
+                        )}
+                      </div>
+                    </Link>
+                  )
+                })}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
